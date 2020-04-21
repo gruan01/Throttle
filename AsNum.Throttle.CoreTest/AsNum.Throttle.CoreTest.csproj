@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\AsNum.Throttle.TestConsole\Program.cs" Link="Program.cs" />
+    <Compile Include="..\AsNum.Throttle.TestConsole\Tester.cs" Link="Tester.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Runtime.Extensions" Version="4.3.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AsNum.Throttle.CrossProcess\AsNum.Throttle.CrossProcess.csproj" />
+    <ProjectReference Include="..\AsNum.Throttle.Redis\AsNum.Throttle.Redis.csproj" />
+    <ProjectReference Include="..\AsNum.Throttle.Statistic\AsNum.Throttle.Statistic.csproj" />
+    <ProjectReference Include="..\AsNum.Throttle\AsNum.Throttle.csproj" />
+  </ItemGroup>
+
+</Project>
