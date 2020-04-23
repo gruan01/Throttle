@@ -26,13 +26,14 @@ namespace AsNum.Throttle.CoreTest
         /// <param name="n"></param>
         public Tester(int boundry, TimeSpan period)
         {
-            Conn = ConnectionMultiplexer.Connect("localhost:6379");
+            this.Conn = ConnectionMultiplexer.Connect("localhost:6379");
 
-            this.Counter = new RedisCounter(Conn);
-            this.Block = new CrossProcess.CrossProcessBlock();
+            this.Counter = new RedisCounter(this.Conn);
+            //this.Block = new CrossProcess.CrossProcessBlock();
+            this.Block = new RedisBlock(this.Conn);
             this.PerformanceCounter = new ThrottlePerformanceCounter();
 
-            this.TS = new Throttle("test", period, boundry, Block, Counter, PerformanceCounter);
+            this.TS = new Throttle("test", period, boundry, this.Block, this.Counter, this.PerformanceCounter);
             this.TS.OnPeriodElapsed += Ts_OnPeriodElapsed;
         }
 
@@ -85,9 +86,9 @@ namespace AsNum.Throttle.CoreTest
         {
             //await Task.Delay(TimeSpan.FromSeconds(6));
             await Task.Delay(TimeSpan.FromSeconds(1));
-            Console.ForegroundColor = ConsoleColor.Red;
+            //Console.ForegroundColor = ConsoleColor.Red;
             Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff}\tAA:{i}");
-            Console.ResetColor();
+            //Console.ResetColor();
         }
 
 
@@ -148,6 +149,7 @@ namespace AsNum.Throttle.CoreTest
                     this.Block.Dispose();
                     this.PerformanceCounter.Dispose();
                     this.Conn.Dispose();
+                    Console.WriteLine("Tester Disposed");
                 }
                 isDisposed = true;
             }

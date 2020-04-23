@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
+using System.Linq;
 
 namespace AsNum.Throttle.Statistic
 {
@@ -12,12 +13,12 @@ namespace AsNum.Throttle.Statistic
         /// <summary>
         /// 
         /// </summary>
-        public static readonly string PERFORMANCE_COUNTER_CATEGORY_INSTANCE = "AsNum.Throttle";
+        public static readonly string CATEGORY = "AsNum.Throttle";
 
-        ///// <summary>
-        ///// 
-        ///// </summary>
-        //public static readonly string PERFORMANCE_COUNTER_CATEGORY_ALL = "AsNum.Throttle.All";
+        /// <summary>
+        /// 
+        /// </summary>
+        public static readonly string CATEGORY_SUMMARY = "AsNum.Throttle.Summary";
 
 
         /// <summary>
@@ -25,15 +26,11 @@ namespace AsNum.Throttle.Statistic
         /// </summary>
         private PerformanceCounter queueCounter;
 
-        ///// <summary>
-        ///// 
-        ///// </summary>
-        //private PerformanceCounter totalQueueCounter;
-
         /// <summary>
         /// 
         /// </summary>
-        private PerformanceCounter totalCounter;
+        private PerformanceCounter totalQueueCounter;
+
 
         /// <summary>
         /// 
@@ -57,36 +54,34 @@ namespace AsNum.Throttle.Statistic
         /// </summary>
         protected override void Initialize()
         {
-            //PerformanceCounterCategory.Delete(PERFORMANCE_COUNTER_CATEGORY_INSTANCE);
-            //PerformanceCounterCategory.Delete(PERFORMANCE_COUNTER_CATEGORY_ALL);
-            if (!PerformanceCounterCategory.Exists(PERFORMANCE_COUNTER_CATEGORY_INSTANCE))
+            //PerformanceCounterCategory.Delete(CATEGORY);
+            //PerformanceCounterCategory.Delete(CATEGORY_SUMMARY);
+            if (!PerformanceCounterCategory.Exists(CATEGORY))
             {
                 var cdc = new CounterCreationDataCollection
                 {
                     new CounterCreationData($"Queue", "", PerformanceCounterType.NumberOfItems32),
-                    new CounterCreationData($"Executed", "", PerformanceCounterType.NumberOfItems32)
                 };
-                PerformanceCounterCategory.Create(PERFORMANCE_COUNTER_CATEGORY_INSTANCE
-                    , "AsNum.Throttle"
+                PerformanceCounterCategory.Create(CATEGORY
+                    , ""
                     , PerformanceCounterCategoryType.MultiInstance
                     , cdc);
             }
 
-            //if (!PerformanceCounterCategory.Exists(PERFORMANCE_COUNTER_CATEGORY_ALL))
-            //{
-            //    var cdc = new CounterCreationDataCollection
-            //    {
-            //        new CounterCreationData($"AllQueue", "", PerformanceCounterType.NumberOfItems32),
-            //    };
-            //    PerformanceCounterCategory.Create(PERFORMANCE_COUNTER_CATEGORY_ALL
-            //        , "AsNum.Throttle.All"
-            //        , PerformanceCounterCategoryType.SingleInstance
-            //        , cdc);
-            //}
+            if (!PerformanceCounterCategory.Exists(CATEGORY_SUMMARY))
+            {
+                var cdc = new CounterCreationDataCollection
+                {
+                    new CounterCreationData($"__total#{this.ThrottleName}", "", PerformanceCounterType.NumberOfItems32),
+                };
+                PerformanceCounterCategory.Create(CATEGORY_SUMMARY
+                    , ""
+                    , PerformanceCounterCategoryType.SingleInstance
+                    , cdc);
+            }
 
-            this.queueCounter = this.Create($"Queue", PERFORMANCE_COUNTER_CATEGORY_INSTANCE, this.InstanceID);
-            this.totalCounter = this.Create($"Executed", PERFORMANCE_COUNTER_CATEGORY_INSTANCE, this.InstanceID);
-            //this.totalQueueCounter = this.Create($"AllQueue", PERFORMANCE_COUNTER_CATEGORY_ALL);
+            this.queueCounter = this.Create($"Queue", CATEGORY, $"{this.ThrottleName}_{this.InstanceID}");
+            this.totalQueueCounter = this.Create($"__total#{this.ThrottleName}", CATEGORY_SUMMARY, "");
         }
 
         /// <summary>
@@ -94,25 +89,17 @@ namespace AsNum.Throttle.Statistic
         /// </summary>
         /// <param name="counterName"></param>
         /// <returns></returns>
-        private PerformanceCounter Create(string counterName, string category, string instanceID = null)
+        private PerformanceCounter Create(string counterName, string category, string instanceID)
         {
-            //if (!string.IsNullOrWhiteSpace(instanceID))
             return new PerformanceCounter()
             {
                 CategoryName = category,
                 CounterName = counterName,
-                InstanceName = $"{this.ThrottleName}#{instanceID}",
+                InstanceName = instanceID,
                 ReadOnly = false,
-                InstanceLifetime = PerformanceCounterInstanceLifetime.Process
+                InstanceLifetime = !string.IsNullOrEmpty(instanceID) ? PerformanceCounterInstanceLifetime.Process : PerformanceCounterInstanceLifetime.Global,
             };
-            //else
-            //    return new PerformanceCounter()
-            //    {
-            //        CategoryName = category,
-            //        CounterName = counterName,
-            //        ReadOnly = false,
-            //        InstanceLifetime = PerformanceCounterInstanceLifetime.Global
-            //    };
+
         }
 
 
@@ -122,7 +109,8 @@ namespace AsNum.Throttle.Statistic
         public override void IncrementQueue()
         {
             this.queueCounter.Increment();
-            //this.totalQueueCounter.Increment();
+            var n = this.totalQueueCounter.Increment();
+            //Console.WriteLine($"I .........{n}");
         }
 
         /// <summary>
@@ -131,7 +119,8 @@ namespace AsNum.Throttle.Statistic
         public override void DecrementQueue()
         {
             this.queueCounter.Decrement();
-            //this.totalQueueCounter.Decrement();
+            var n = this.totalQueueCounter.Decrement();
+            //Console.WriteLine($"D .........{n}");
         }
 
         /// <summary>
@@ -139,7 +128,7 @@ namespace AsNum.Throttle.Statistic
         /// </summary>
         public override void AddExecuted()
         {
-            this.totalCounter.Increment();
+            //this.totalCounter.Increment();
         }
 
 
@@ -149,14 +138,14 @@ namespace AsNum.Throttle.Statistic
         /// </summary>
         protected override void InnerDispose()
         {
-            if (this.totalCounter != null)
-            {
-                this.totalCounter.Dispose();
-            }
-
             if (this.queueCounter != null)
             {
                 this.queueCounter.Dispose();
+            }
+
+            if (this.totalQueueCounter != null)
+            {
+                this.totalQueueCounter.Dispose();
             }
         }
 

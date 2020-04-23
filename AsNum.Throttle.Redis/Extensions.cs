@@ -8,7 +8,7 @@ namespace AsNum.Throttle.Redis
     /// <summary>
     /// 
     /// </summary>
-    public static class DatabaseExtension
+    public static class Extensions
     {
 
         /// <summary>
@@ -67,5 +67,49 @@ namespace AsNum.Throttle.Redis
             return rst;
         }
 
+
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="db"></param>
+        /// <param name="key"></param>
+        /// <param name="defaultValue"></param>
+        /// <param name="flags"></param>
+        /// <returns></returns>
+        public static int StringGetInt(this IDatabase db, RedisKey key, int defaultValue = default, CommandFlags flags = CommandFlags.None)
+        {
+            var v = db.StringGet(key, flags);
+            if (v != RedisValue.Null)
+            {
+                if (v.TryParse(out int vv))
+                    return vv;
+            }
+
+            return defaultValue;
+        }
+
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="throttleName"></param>
+        /// <returns></returns>
+        internal static string LockKey(this string throttleName)
+        {
+            return $"{throttleName}:lock";
+        }
+
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="throttleName"></param>
+        /// <returns></returns>
+        internal static string LockCountKey(this string throttleName)
+        {
+            return $"{throttleName}:lockCount";
+        }
     }
 }

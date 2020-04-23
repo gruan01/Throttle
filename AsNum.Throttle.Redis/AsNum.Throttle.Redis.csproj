@@ -9,7 +9,7 @@
     <PackageTags>AsNum</PackageTags>
     <PackageVersion>1.0.0</PackageVersion>
     <Authors>xling</Authors>
-    <LangVersion>7.1</LangVersion>
+    <LangVersion>8.0</LangVersion>
     <DocumentationFile>bin\$(Configuration)\$(TargetFramework)\$(AssemblyName).xml</DocumentationFile>
     <Description>Action / Func throttle in a period</Description>
     <PackageProjectUrl>https://github.com/gruan01/Throttle</PackageProjectUrl>

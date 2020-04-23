@@ -32,9 +32,9 @@ namespace AsNum.Throttle
 
 
         /// <summary>
-        /// 
+        /// 是否自动释放, 除 DefaultBlock 外, 其它 Block 都应手动释放.
         /// </summary>
-        public bool AutoDispose { get; set; }
+        internal bool AutoDispose { get; set; }
 
 
 

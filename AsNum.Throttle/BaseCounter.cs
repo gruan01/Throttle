@@ -16,6 +16,13 @@ namespace AsNum.Throttle
         /// </summary>
         public string ThrottleName { get; private set; }
 
+
+        /// <summary>
+        /// 
+        /// </summary>
+        public TimeSpan ThrottlePeriod { get; private set; }
+
+
         /// <summary>
         /// 
         /// </summary>
@@ -33,13 +40,18 @@ namespace AsNum.Throttle
         public abstract int ResetCount();
 
 
+
+
         /// <summary>
         /// 
         /// </summary>
         /// <param name="throttleName"></param>
-        internal void SetUp(string throttleName)
+        /// <param name="throttlePeriod"></param>
+        internal void SetUp(string throttleName, TimeSpan throttlePeriod)
         {
             this.ThrottleName = throttleName;
+
+            this.ThrottlePeriod = throttlePeriod;
 
             this.Initialize();
         }
@@ -51,7 +63,9 @@ namespace AsNum.Throttle
 
 
 
-
+        /// <summary>
+        /// 
+        /// </summary>
         protected abstract void InnerDispose();
 
 

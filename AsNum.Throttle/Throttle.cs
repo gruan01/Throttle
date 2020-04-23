@@ -87,56 +87,6 @@ namespace AsNum.Throttle
         #endregion
 
 
-        #region 数据
-        ///// <summary>
-        ///// 总执行条数
-        ///// </summary>
-        //private long _totalExecuted = 0;
-
-        ///// <summary>
-        ///// 总执行条数
-        ///// </summary>
-        //public long TotalExecuted => this._totalExecuted;
-
-
-        ///// <summary>
-        ///// 总共压入队列数
-        ///// </summary>
-        //private long _totalEnqueued = 0;
-
-        ///// <summary>
-        ///// 总共压入队列数
-        ///// </summary>
-        //public long TotalEnqueued => this._totalEnqueued;
-
-
-        ///// <summary>
-        ///// 当前周期内, 可用空间 (阴止队列可插入数: block.BoundedCapacity - block.Count)
-        ///// </summary>
-        //public int FreeSpace => this.MaxCountPerPeriod - this.block?.Length ?? 0;
-
-
-        ///// <summary>
-        ///// 当前计数
-        ///// </summary>
-        //public int CurrentCount => this.counter.CurrentCount;
-
-
-        ///// <summary>
-        ///// 当前任务数
-        ///// </summary>
-        //public int TaskCount => this.tsks.Count;
-
-
-        ///// <summary>
-        ///// 周期数
-        ///// </summary>
-        //public long PeriodNumber { get; private set; }
-        #endregion
-
-
-
-
         /// <summary>
         /// 
         /// </summary>
@@ -179,7 +129,7 @@ namespace AsNum.Throttle
 
 
             this.counter = counter;
-            this.counter.SetUp(throttleName);
+            this.counter.SetUp(throttleName, this.Period);
 
             this.performanceCounter = performanceCounter;
             this.performanceCounter.SetUp(throttleName);
@@ -224,21 +174,8 @@ namespace AsNum.Throttle
         private void Timer_Elapsed(object sender, ElapsedEventArgs e)
         {
             var n = this.counter.ResetCount();
-            //this.PeriodNumber++;
-            this.OnPeriodElapsed?.Invoke(this, new PeriodElapsedEventArgs()
-            {
-                //Statistic = new ThrottleStatistic()
-                //{
-                //    CurrentExecutedCount = n,
-                //    CurrentFreeSpace = this.FreeSpace,
-                //    CurrentTaskCount = this.tsks.Count,
-                //    TotalEnqueued = this.TotalEnqueued,
-                //    TotalExecuted = this.TotalExecuted,
-                //    PeriodNumber = this.PeriodNumber
-                //}
-            });
+            this.OnPeriodElapsed?.Invoke(this, new PeriodElapsedEventArgs());
             this.TryProcessQueue();
-
         }
 
 
@@ -270,7 +207,7 @@ namespace AsNum.Throttle
                 //当任务执行完时, 才能阻止队列的一个空间出来,供下一个任务进入
                 this.block.Release(tag);
                 this.performanceCounter?.DecrementQueue();
-                this.performanceCounter?.AddExecuted();
+                //this.performanceCounter?.AddExecuted();
 
                 //Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff}..................Release");
                 //Interlocked.Increment(ref this._totalExecuted);
@@ -280,12 +217,14 @@ namespace AsNum.Throttle
 
             //占用一个空间, 如果空间占满, 会无限期等待,直至有空间释放出来
             this.block.Acquire(tag);
+            //占用一个空间后, 才能将任务插入队列
+            this.tsks.Enqueue(task);
+
             this.performanceCounter?.IncrementQueue();
 
             //Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff}..................Add");
 
-            //占用一个空间后, 才能将任务插入队列
-            this.tsks.Enqueue(task);
+
             //Interlocked.Increment(ref this._totalEnqueued);
 
             //尝试执行任务.因为初始状态下, 任务队列是空的, while 循环已退出.
@@ -446,25 +385,6 @@ namespace AsNum.Throttle
 
         #endregion
 
-
-        #region
-        ///// <summary>
-        ///// 
-        ///// </summary>
-        ///// <returns></returns>
-        //public ThrottleStatistic GetStatistic()
-        //{
-        //    return new ThrottleStatistic()
-        //    {
-        //        CurrentExecutedCount = this.CurrentCount,
-        //        CurrentFreeSpace = this.FreeSpace,
-        //        CurrentTaskCount = this.tsks.Count,
-        //        TotalEnqueued = this.TotalEnqueued,
-        //        TotalExecuted = this.TotalExecuted,
-        //        PeriodNumber = this.PeriodNumber
-        //    };
-        //}
-        #endregion
 
         #region dispose
         /// <summary>

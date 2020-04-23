@@ -10,7 +10,7 @@ namespace AsNum.Throttle
     /// 
     /// </summary>
     /// <typeparam name="T"></typeparam>
-    public class WrapFuncTask<T> : Task<Task<T>>, IUnwrap
+    internal class WrapFuncTask<T> : Task<Task<T>>, IUnwrap
     {
         /// <summary>
         /// 
