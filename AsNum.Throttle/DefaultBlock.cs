@@ -39,7 +39,6 @@ namespace AsNum.Throttle
         /// </summary>
         public override void Acquire(string tag)
         {
-            this.block.Add(0);
             if (this.BlockTimeout.HasValue)
                 this.block.TryAdd(0, this.BlockTimeout.Value);
             else
