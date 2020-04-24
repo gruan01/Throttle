@@ -7,10 +7,13 @@
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <PackageTags>AsNum</PackageTags>
-    <PackageVersion>1.0.0</PackageVersion>
+    <PackageVersion>1.0.1.1</PackageVersion>
     <Authors>xling</Authors>
-    <LangVersion>7.1</LangVersion>
+    <LangVersion>8.0</LangVersion>
+    <Description>Action / Func throttle in a period</Description>
     <DocumentationFile>bin\$(Configuration)\$(TargetFramework)\$(AssemblyName).xml</DocumentationFile>
+    <RepositoryUrl>https://github.com/gruan01/Throttle</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/gruan01/Throttle</PackageProjectUrl>
   </PropertyGroup>
 
 </Project>

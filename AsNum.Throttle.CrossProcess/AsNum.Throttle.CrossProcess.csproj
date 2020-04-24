@@ -1,7 +1,19 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>netstandard2.0</TargetFramework>
+    <TargetFrameworks>netstandard2.0;net451</TargetFrameworks>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <IncludeSymbols>true</IncludeSymbols>
+    <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <PackageTags>AsNum</PackageTags>
+    <PackageVersion>1.0.1</PackageVersion>
+    <Authors>xling</Authors>
+    <LangVersion>8.0</LangVersion>
+    <Description>Cross Process Block</Description>
+    <DocumentationFile>bin\$(Configuration)\$(TargetFramework)\$(AssemblyName).xml</DocumentationFile>
+    <RepositoryUrl>https://github.com/gruan01/Throttle</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/gruan01/Throttle</PackageProjectUrl>
   </PropertyGroup>
 
   <ItemGroup>

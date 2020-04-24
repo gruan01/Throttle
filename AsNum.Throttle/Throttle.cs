@@ -124,15 +124,15 @@ namespace AsNum.Throttle
             this.Period = period;
 
 
-            this.block = block;
+            this.block = block ?? throw new ArgumentNullException(nameof(block));
             this.block.Setup(throttleName, maxCountPerPeriod, period, blockTimeout);
 
 
-            this.counter = counter;
+            this.counter = counter ?? throw new ArgumentNullException(nameof(counter));
             this.counter.SetUp(throttleName, this.Period);
 
             this.performanceCounter = performanceCounter;
-            this.performanceCounter.SetUp(throttleName);
+            this.performanceCounter?.SetUp(throttleName);
 
 
             this.timer = new System.Timers.Timer(period.TotalMilliseconds)
