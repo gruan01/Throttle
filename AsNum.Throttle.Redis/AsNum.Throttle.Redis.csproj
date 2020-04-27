@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>netstandard2.0;net461</TargetFrameworks>
+    <TargetFrameworks>netstandard2.0;net461;net451</TargetFrameworks>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <IncludeSymbols>true</IncludeSymbols>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
@@ -17,10 +17,18 @@
     <PackageProjectUrl>https://github.com/gruan01/Throttle</PackageProjectUrl>
   </PropertyGroup>
 
+  <PropertyGroup Condition=" '$(TargetFramework)' == 'net451'">
+    <DefineConstants>NET451</DefineConstants>
+  </PropertyGroup>  
+  
   <ItemGroup>
     <PackageReference Include="StackExchange.Redis" Version="2.1.30" />
   </ItemGroup>
 
+  <ItemGroup Condition=" '$(TargetFramework)' == 'net451'">
+    <PackageReference Include="StackExchange.Redis" Version="[1.2.6]" />
+  </ItemGroup>  
+  
   <ItemGroup>
     <ProjectReference Include="..\AsNum.Throttle\AsNum.Throttle.csproj" />
   </ItemGroup>

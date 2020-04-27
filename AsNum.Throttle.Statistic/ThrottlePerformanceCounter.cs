@@ -88,6 +88,8 @@ namespace AsNum.Throttle.Statistic
         /// 
         /// </summary>
         /// <param name="counterName"></param>
+        /// <param name="category"></param>
+        /// <param name="instanceID"></param>
         /// <returns></returns>
         private PerformanceCounter Create(string counterName, string category, string instanceID)
         {
@@ -98,6 +100,7 @@ namespace AsNum.Throttle.Statistic
                 InstanceName = instanceID,
                 ReadOnly = false,
                 InstanceLifetime = !string.IsNullOrEmpty(instanceID) ? PerformanceCounterInstanceLifetime.Process : PerformanceCounterInstanceLifetime.Global,
+                //RawValue = 0
             };
 
         }

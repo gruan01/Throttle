@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>netstandard2.0;net461</TargetFrameworks>
+    <TargetFrameworks>netstandard2.0;net461;net451</TargetFrameworks>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <IncludeSymbols>true</IncludeSymbols>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
@@ -17,6 +17,10 @@
 
   <ItemGroup>
     <PackageReference Include="System.Diagnostics.PerformanceCounter" Version="4.7.0" />
+  </ItemGroup>
+
+  <ItemGroup Condition=" '$(TargetFramework)' == 'net451'">
+    <PackageReference Remove="System.Diagnostics.PerformanceCounter" Version="4.7.0" />
   </ItemGroup>
 
   <ItemGroup>
