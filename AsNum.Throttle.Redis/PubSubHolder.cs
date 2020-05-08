@@ -153,6 +153,9 @@ namespace AsNum.Throttle.Redis
                     if (n < this.boundedCapacity)
                     {
                         //哪里还是有问题, 按理说这个地方不可能有小于 0 的情况发生的...
+                        //可能是如下情况引起的:
+                        //period 为 1秒, 然后1秒内压入了 N 个任务, 每个任务的执行时间都超过了1秒.
+                        //然后第2秒,第3秒...第N秒, 都没有任务压入.
                         if (n < 0)
                         {
                             db.StringSet(this.throttleName.LockCountKey(), 1, flags: CommandFlags.DemandMaster);
