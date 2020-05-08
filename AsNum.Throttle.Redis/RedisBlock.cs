@@ -53,7 +53,7 @@ namespace AsNum.Throttle.Redis
         /// 
         /// </summary>
         /// <param name="connection"></param>
-        /// <param name="retryAddInterval">尝试将压入 block 的重试周期(毫秒)</param>
+        /// <param name="retryAddInterval">尝试压入 block 的重试周期(毫秒)</param>
         /// <param name="lockTimeout">分布锁的过期时间(毫秒), 预防应用程序挂掉, 导至死锁</param>
         public RedisBlock(ConnectionMultiplexer connection, int retryAddInterval = 100, int lockTimeout = 5000)
         {
