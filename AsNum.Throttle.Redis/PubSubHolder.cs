@@ -152,11 +152,19 @@ namespace AsNum.Throttle.Redis
                     var n = db.StringGetInt(this.throttleName.LockCountKey());
                     if (n < this.boundedCapacity)
                     {
-                        var a = db.StringIncrement(this.throttleName.LockCountKey());
+                        //哪里还是有问题, 按理说这个地方不可能有小于 0 的情况发生的...
+                        if (n < 0)
+                        {
+                            db.StringSet(this.throttleName.LockCountKey(), 1, flags: CommandFlags.DemandMaster);
+                        }
+                        else
+                        {
+                            db.StringIncrement(this.throttleName.LockCountKey(), flags: CommandFlags.DemandMaster);
+                        }
                         //每次进入到这里, 都要重置一下这个键的有效期.
                         //如果这个键已经失效了, 说明任务已经全部运行完了.
                         //如果不设置有效期, 则下次在运行的时候, 会因为这个键有值, 而被迫等待.
-                        db.KeyExpire(this.throttleName.LockCountKey(), this.period);
+                        db.KeyExpire(this.throttleName.LockCountKey(), this.period, flags: CommandFlags.DemandMaster);
                         //Console.WriteLine($"................Add {a} {tag}");
                         //
                         this.subscriber.Publish(this.throttleName, tag);

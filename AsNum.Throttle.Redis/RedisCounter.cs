@@ -49,7 +49,7 @@ namespace AsNum.Throttle.Redis
             try
             {
                 var n = (int)this.db.StringIncrement(this.ThrottleName, flags: CommandFlags.DemandMaster);
-                db.KeyExpire(this.ThrottleName, this.ThrottlePeriod);
+                db.KeyExpire(this.ThrottleName, this.ThrottlePeriod, CommandFlags.DemandMaster);
                 return n;
             }
             catch
@@ -67,7 +67,7 @@ namespace AsNum.Throttle.Redis
             var v = this.db.StringGetSet(this.ThrottleName, 0, flags: CommandFlags.DemandMaster);
             if (v.HasValue)
             {
-                db.KeyExpire(this.ThrottleName, this.ThrottlePeriod);
+                db.KeyExpire(this.ThrottleName, this.ThrottlePeriod, flags: CommandFlags.DemandMaster);
                 if (v.TryParse(out int i))
                     return i;
             }
