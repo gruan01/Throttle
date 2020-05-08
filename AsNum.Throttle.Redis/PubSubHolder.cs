@@ -156,6 +156,8 @@ namespace AsNum.Throttle.Redis
                         //可能是如下情况引起的:
                         //period 为 1秒, 然后1秒内压入了 N 个任务, 每个任务的执行时间都超过了1秒.
                         //然后第2秒,第3秒...第N秒, 都没有任务压入.
+                        //而这个 LockCountKey 的过期时间设置的就是 period 的值, 
+                        //在 decrement 的时候, lockCountKey 不存在, 就默认为 0, 接连 decrement , 就出现负数了...
                         if (n < 0)
                         {
                             db.StringSet(this.throttleName.LockCountKey(), 1, flags: CommandFlags.DemandMaster);
