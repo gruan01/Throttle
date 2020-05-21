@@ -57,12 +57,6 @@ namespace AsNum.Throttle
         /// </summary>
         private readonly ConcurrentQueue<Task> tsks = new ConcurrentQueue<Task>();
 
-
-        /// <summary>
-        /// 用于 周期性的 重置计数
-        /// </summary>
-        private readonly System.Timers.Timer timer;
-
         #endregion
 
 
@@ -130,19 +124,12 @@ namespace AsNum.Throttle
 
             this.counter = counter ?? throw new ArgumentNullException(nameof(counter));
             this.counter.SetUp(throttleName, this.Period);
+            this.counter.OnReset += Counter_OnReset;
 
             this.performanceCounter = performanceCounter;
             this.performanceCounter?.SetUp(throttleName);
 
-
-            this.timer = new System.Timers.Timer(period.TotalMilliseconds)
-            {
-                AutoReset = true
-            };
-            this.timer.Elapsed += Timer_Elapsed;
-            this.timer.Start();
-
-            //this.TryProcessQueue();
+            this.TryProcessQueue();
         }
 
 
@@ -158,7 +145,7 @@ namespace AsNum.Throttle
                   throttleName,
                   period,
                   maxCountPerPeriod,
-                  new DefaultBlock() { AutoDispose = true },
+                  new DefaultBlock(),
                   new DefaultCounter(),
                   blockTimeout: blockTimeout
                   )
@@ -166,18 +153,11 @@ namespace AsNum.Throttle
         }
 
 
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private void Timer_Elapsed(object sender, ElapsedEventArgs e)
+        private void Counter_OnReset(object sender, EventArgs e)
         {
-            var n = this.counter.ResetCount();
             this.OnPeriodElapsed?.Invoke(this, new PeriodElapsedEventArgs());
             this.TryProcessQueue();
         }
-
 
 
         /// <summary>
@@ -417,15 +397,14 @@ namespace AsNum.Throttle
             {
                 if (flag)
                 {
-
-                    if (this.timer != null)
+                    if (this.block != null && this.block is IAutoDispose)
                     {
-                        this.timer.Dispose();
+                        this.block.Dispose();
                     }
 
-                    if (this.block != null && this.block.AutoDispose && this.block is IDisposable disposableObj)
+                    if (this.counter != null && this.counter is IAutoDispose)
                     {
-                        disposableObj.Dispose();
+                        this.counter.Dispose();
                     }
                 }
                 isDisposed = true;

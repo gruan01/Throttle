@@ -32,18 +32,6 @@ namespace AsNum.Throttle
 
 
         /// <summary>
-        /// 是否自动释放, 除 DefaultBlock 外, 其它 Block 都应手动释放.
-        /// </summary>
-        internal bool AutoDispose { get; set; }
-
-
-
-        ///// <summary>
-        ///// 阻止队列的长度
-        ///// </summary>
-        //public abstract int Length { get; }
-
-        /// <summary>
         /// 尝试占用一个位置
         /// </summary>
         public abstract void Acquire(string tag);

@@ -9,20 +9,13 @@ namespace AsNum.Throttle
     /// <summary>
     /// 用 BlockingCollection 实现的阻止队列. 不能跨进程
     /// </summary>
-    internal sealed class DefaultBlock : BaseBlock
+    internal sealed class DefaultBlock : BaseBlock, IAutoDispose
     {
 
         /// <summary>
         /// 
         /// </summary>
         private BlockingCollection<byte> block;
-
-
-        ///// <summary>
-        ///// 
-        ///// </summary>
-        //public override int Length => this.block.Count;
-
 
         /// <summary>
         /// 

@@ -21,6 +21,11 @@ namespace AsNum.Throttle.Redis
         /// <summary>
         /// 
         /// </summary>
+        private readonly ISubscriber subscriber;
+
+        /// <summary>
+        /// 
+        /// </summary>
         /// <param name="connection"></param>
         public RedisCounter(ConnectionMultiplexer connection)
         {
@@ -30,6 +35,7 @@ namespace AsNum.Throttle.Redis
             }
 
             this.db = connection.GetDatabase();
+            this.subscriber = connection.GetSubscriber();
         }
 
 
@@ -38,6 +44,13 @@ namespace AsNum.Throttle.Redis
         /// </summary>
         protected override void Initialize()
         {
+            this.subscriber.Subscribe("__keyevent@0__:expired", (channel, value) =>
+            {
+                if (value == this.ThrottleName)
+                {
+                    this.ResetFired();
+                }
+            });
         }
 
         /// <summary>
@@ -49,30 +62,19 @@ namespace AsNum.Throttle.Redis
             try
             {
                 var n = (int)this.db.StringIncrement(this.ThrottleName, flags: CommandFlags.DemandMaster);
-                db.KeyExpire(this.ThrottleName, this.ThrottlePeriod, CommandFlags.DemandMaster);
+                if (n == 1)
+                {
+                    //只有第一次时, 才对该值做 TTL
+                    db.KeyExpire(this.ThrottleName, this.ThrottlePeriod, CommandFlags.DemandMaster);
+                }
                 return n;
             }
             catch
             {
-                this.ResetCount();
+                this.db.StringSet(this.ThrottleName, 0, flags: CommandFlags.DemandMaster);
+                db.KeyExpire(this.ThrottleName, this.ThrottlePeriod, flags: CommandFlags.DemandMaster);
                 return 0;
             }
-        }
-
-        /// <summary>
-        /// 
-        /// </summary>
-        public override int ResetCount()
-        {
-            var v = this.db.StringGetSet(this.ThrottleName, 0, flags: CommandFlags.DemandMaster);
-            if (v.HasValue)
-            {
-                db.KeyExpire(this.ThrottleName, this.ThrottlePeriod, flags: CommandFlags.DemandMaster);
-                if (v.TryParse(out int i))
-                    return i;
-            }
-
-            return 0;
         }
 
 
@@ -81,10 +83,6 @@ namespace AsNum.Throttle.Redis
         /// </summary>
         protected override void InnerDispose()
         {
-            //if (this.conn != null)
-            //{
-            //    this.conn.Dispose();
-            //}
         }
     }
 }

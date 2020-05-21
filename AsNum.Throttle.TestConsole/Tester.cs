@@ -60,7 +60,7 @@ namespace AsNum.Throttle.CoreTest
                 //var tsk6 = ts.Execute((o) => CC((int)o), i);
 
                 //tsks.Add(tsk1);
-                tsks.Add(tsk2);
+                tsks.Add(tsk2.Unwrap());
                 //tsks.Add(tsk3);
                 //tsks.Add(tsk4);
                 //tsks.Add(tsk5);
@@ -73,7 +73,7 @@ namespace AsNum.Throttle.CoreTest
         private static void Ts_OnPeriodElapsed(object sender, PeriodElapsedEventArgs e)
         {
             Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine($"---------------");
+            Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff}---------------");
             Console.ResetColor();
         }
 

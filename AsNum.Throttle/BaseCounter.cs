@@ -5,11 +5,14 @@ using System.Threading;
 
 namespace AsNum.Throttle
 {
+
     /// <summary>
     /// 
     /// </summary>
     public abstract class BaseCounter : IDisposable
     {
+
+        internal event EventHandler<EventArgs> OnReset;
 
         /// <summary>
         /// 
@@ -28,18 +31,22 @@ namespace AsNum.Throttle
         /// </summary>
         public abstract int CurrentCount { get; }
 
+
         /// <summary>
         /// 
         /// </summary>
         /// <returns></returns>
         public abstract int IncrementCount();
 
+
+
         /// <summary>
-        /// 重置, 并返回之前的计数
+        /// 
         /// </summary>
-        public abstract int ResetCount();
-
-
+        protected void ResetFired()
+        {
+            this.OnReset?.Invoke(this, EventArgs.Empty);
+        }
 
 
         /// <summary>

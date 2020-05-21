@@ -11,14 +11,14 @@ namespace AsNum.Throttle.TestConsole
 {
     class Program
     {
-        static readonly Tester Tester = new Tester(30, TimeSpan.FromSeconds(1));
+        static readonly Tester Tester = new Tester(10, TimeSpan.FromSeconds(5));
 
         static async Task Main(string[] args)
         {
             AppDomain.CurrentDomain.ProcessExit += CurrentDomain_ProcessExit;
             TaskScheduler.UnobservedTaskException += TaskScheduler_UnobservedTaskException;
 
-            var rnd = new Random();
+            //var rnd = new Random();
             Console.WriteLine("请输入要测试的循环次数:[1000]");
             var str = Console.ReadLine();
 

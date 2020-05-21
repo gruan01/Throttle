@@ -65,7 +65,7 @@ namespace AsNum.Throttle.Redis
             this.Connection = connection;
             this.db = connection.GetDatabase();
             this.RetryAddInterval = retryAddInterval;
-            LockTimeout = lockTimeout;
+            this.LockTimeout = lockTimeout;
         }
 
 
