@@ -93,10 +93,12 @@ namespace AsNum.Throttle.Redis
         /// </summary>
         private readonly ConcurrentDictionary<string, AutoResetEvent> autoResetEvents = new ConcurrentDictionary<string, AutoResetEvent>();
 
+
         /// <summary>
         /// 
         /// </summary>
-        private System.Timers.Timer timer;
+        private Timer timer;
+
 
         /// <summary>
         /// 
@@ -104,7 +106,7 @@ namespace AsNum.Throttle.Redis
         /// <param name="connection"></param>
         /// <param name="retryAddInterval">尝试压入 block 的重试周期(毫秒)</param>
         /// <param name="lockTimeout">分布锁的过期时间(毫秒), 预防应用程序挂掉, 导至死锁</param>
-        /// <param name="localBlockCapacity">本地阻止队列的容量</param>
+        /// <param name="localBlockCapacity">本地阻止队列的容量, 不是越大越好, 太大会导至发布消息缓慢, 20似乎是个完美的值.</param>
         public RedisBlock(ConnectionMultiplexer connection, int retryAddInterval = 100, int lockTimeout = 5000, int localBlockCapacity = 20)
         {
             if (localBlockCapacity <= 0)
@@ -116,6 +118,7 @@ namespace AsNum.Throttle.Redis
             this.LocalBlockCapacity = localBlockCapacity;
             this.subscriber = connection.GetSubscriber();
             this.db = connection.GetDatabase();
+            this.subscriber.Ping();
 
             this.handler = (c, v) =>
             {
@@ -134,15 +137,18 @@ namespace AsNum.Throttle.Redis
         /// <summary>
         /// 
         /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private void Timer_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
+        private void Timer_Elapsed(object state)
         {
             //TryPush 会试图加锁, 发布消息, 计数,设置过期时间, 所以耗时会多于 RetryAddInterval,
             //这里不能被上面所说的整体操作时间影响, 否则, 会有空转.
             Task.Run(() => this.TryPush());
+            //ThreadPool.QueueUserWorkItem(new WaitCallback(AA));
         }
 
+        //private void AA(object state)
+        //{
+        //    this.TryPush();
+        //}
 
         /// <summary>
         /// 
@@ -155,12 +161,7 @@ namespace AsNum.Throttle.Redis
 
             this.Heart();
 
-            this.timer = new System.Timers.Timer(this.RetryAddInterval)
-            {
-                AutoReset = true
-            };
-            this.timer.Elapsed += Timer_Elapsed;
-            this.timer.Start();
+            this.timer = new Timer(new TimerCallback(Timer_Elapsed), null, 0, this.RetryAddInterval);
         }
 
 
@@ -220,6 +221,7 @@ namespace AsNum.Throttle.Redis
         /// </summary>
         private async Task TryPush()
         {
+            //Console.WriteLine("here");
             var succ = false;
             //如果只有一个客户端, 或者上一个轮询中, 不是当前客户端 获取的锁
             //用于模拟公平竞争.
@@ -291,6 +293,7 @@ namespace AsNum.Throttle.Redis
             this.localBlocks?.Dispose();
             this.subscriber?.Unsubscribe(this.Channel);
             this.subscriber?.Unsubscribe(this.HeartChannel);
+            this.timer?.Dispose();
         }
 
     }

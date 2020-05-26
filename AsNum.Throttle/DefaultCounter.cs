@@ -1,9 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
-using System.Timers;
 
 namespace AsNum.Throttle
 {
@@ -27,7 +23,7 @@ namespace AsNum.Throttle
         /// <summary>
         /// 用于 周期性的 重置计数
         /// </summary>
-        private System.Timers.Timer timer;
+        private Timer timer;
 
 
         /// <summary>
@@ -35,20 +31,13 @@ namespace AsNum.Throttle
         /// </summary>
         protected override void Initialize()
         {
-            this.timer = new System.Timers.Timer(this.ThrottlePeriod.TotalMilliseconds)
-            {
-                AutoReset = true
-            };
-            this.timer.Elapsed += Timer_Elapsed;
-            this.timer.Start();
+            this.timer = new Timer(new TimerCallback(Timer_Elapsed), null, TimeSpan.Zero, this.ThrottlePeriod);
         }
 
         /// <summary>
         /// 
         /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private void Timer_Elapsed(object sender, ElapsedEventArgs e)
+        private void Timer_Elapsed(object state)
         {
             Interlocked.Exchange(ref this._currentCount, 0);
             this.ResetFired();

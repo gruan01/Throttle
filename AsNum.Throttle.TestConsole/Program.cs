@@ -1,17 +1,12 @@
 ﻿using AsNum.Throttle.CoreTest;
-using AsNum.Throttle.Redis;
-using AsNum.Throttle.Statistic;
-using StackExchange.Redis;
 using System;
-using System.Collections.Generic;
-using System.Diagnostics;
 using System.Threading.Tasks;
 
 namespace AsNum.Throttle.TestConsole
 {
     class Program
     {
-        static readonly Tester Tester = new Tester(1000, TimeSpan.FromSeconds(5));
+        static readonly Tester Tester = new Tester(1000, TimeSpan.FromSeconds(3));
 
         static async Task Main(string[] args)
         {
