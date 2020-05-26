@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace AsNum.Throttle
 {
@@ -30,12 +31,18 @@ namespace AsNum.Throttle
         /// <summary>
         /// 
         /// </summary>
-        public override void Acquire(string tag)
+        public override Task Acquire(string tag)
         {
             if (this.BlockTimeout.HasValue)
                 this.block.TryAdd(0, this.BlockTimeout.Value);
             else
                 this.block.Add(0);
+
+#if !NET451
+            return Task.CompletedTask;
+#else
+            return Task.FromResult(true);
+#endif
         }
 
 
@@ -43,12 +50,18 @@ namespace AsNum.Throttle
         /// <summary>
         /// 
         /// </summary>
-        public override void Release(string tag)
+        public override Task Release(string tag)
         {
             if (this.BlockTimeout.HasValue)
                 this.block.TryTake(out _, this.BlockTimeout.Value);
             else
                 this.block.Take();
+
+#if !NET451
+            return Task.CompletedTask;
+#else
+            return Task.FromResult(true);
+#endif
         }
 
 

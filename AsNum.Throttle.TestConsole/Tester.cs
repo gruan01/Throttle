@@ -34,6 +34,7 @@ namespace AsNum.Throttle.CoreTest
             this.PerformanceCounter = new ThrottlePerformanceCounter();
 
             this.TS = new Throttle("test", period, boundry, this.Block, this.Counter, this.PerformanceCounter);
+            //this.TS = new Throttle("test", period, boundry);
             this.TS.OnPeriodElapsed += Ts_OnPeriodElapsed;
         }
 
@@ -60,7 +61,7 @@ namespace AsNum.Throttle.CoreTest
                 //var tsk6 = ts.Execute((o) => CC((int)o), i);
 
                 //tsks.Add(tsk1);
-                tsks.Add(tsk2.Unwrap());
+                tsks.Add(tsk2);
                 //tsks.Add(tsk3);
                 //tsks.Add(tsk4);
                 //tsks.Add(tsk5);
@@ -99,7 +100,7 @@ namespace AsNum.Throttle.CoreTest
         /// <returns></returns>
         private static async Task<int> BB(int i)
         {
-            await Task.Delay(TimeSpan.FromSeconds(1));
+            //await Task.Delay(TimeSpan.FromSeconds(1));
             Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff}\tBB:{i}");
             return i;
         }

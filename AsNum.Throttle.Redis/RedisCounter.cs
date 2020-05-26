@@ -1,11 +1,15 @@
 ﻿using StackExchange.Redis;
 using System;
+using System.Threading.Tasks;
 
 namespace AsNum.Throttle.Redis
 {
     /// <summary>
     /// 
     /// </summary>
+    /// <remarks>
+    /// 确保 Redis 的 notify-keyspace-events 中开启了 Ex
+    /// </remarks>
     public class RedisCounter : BaseCounter
     {
         /// <summary>
@@ -27,6 +31,9 @@ namespace AsNum.Throttle.Redis
         /// 
         /// </summary>
         /// <param name="connection"></param>
+        /// <remarks>
+        /// 在多进程下, 同时读取到的计数可能是相同的, 然后就会造成竞争, 从而会多出最多 N (N个进程) 个出来.
+        /// </remarks>
         public RedisCounter(ConnectionMultiplexer connection)
         {
             if (connection is null)

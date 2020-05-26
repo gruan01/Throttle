@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace AsNum.Throttle.CrossProcess
 {
@@ -8,18 +9,6 @@ namespace AsNum.Throttle.CrossProcess
     /// </summary>
     public class CrossProcessBlock : BaseBlock
     {
-
-        ///// <summary>
-        ///// 
-        ///// </summary>
-        //private int _length = 0;
-
-        ///// <summary>
-        ///// 
-        ///// </summary>
-        //public override int Length => this._length;
-
-
         /// <summary>
         /// 
         /// </summary>
@@ -42,14 +31,18 @@ namespace AsNum.Throttle.CrossProcess
         /// <summary>
         /// 
         /// </summary>
-        public override void Acquire(string tag)
+        public override Task Acquire(string tag)
         {
             if (this.BlockTimeout.HasValue)
                 this.semaphore.WaitOne(this.BlockTimeout.Value);
             else
                 this.semaphore.WaitOne();
 
-            //Interlocked.Increment(ref this._length);
+#if !NET451
+            return Task.CompletedTask;
+#else
+            return Task.FromResult(true);
+#endif
         }
 
 
@@ -57,11 +50,14 @@ namespace AsNum.Throttle.CrossProcess
         /// <summary>
         /// 
         /// </summary>
-        public override void Release(string tag)
+        public override Task Release(string tag)
         {
-            //Interlocked.Decrement(ref this._length);
-
             this.semaphore.Release();
+#if !NET451
+            return Task.CompletedTask;
+#else
+            return Task.FromResult(true);
+#endif
         }
 
         /// <summary>
@@ -69,8 +65,8 @@ namespace AsNum.Throttle.CrossProcess
         /// </summary>
         protected override void InnerDispose()
         {
-            this.semaphore.Close();
-            this.semaphore.Dispose();
+            this.semaphore?.Close();
+            this.semaphore?.Dispose();
         }
 
     }

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Concurrent;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Timers;
@@ -119,7 +120,7 @@ namespace AsNum.Throttle
 
 
             this.block = block ?? throw new ArgumentNullException(nameof(block));
-            this.block.Setup(throttleName, maxCountPerPeriod, period, blockTimeout);
+            this.block.Setup(throttleName, this.ThrottleID, maxCountPerPeriod, period, blockTimeout);
 
 
             this.counter = counter ?? throw new ArgumentNullException(nameof(counter));
@@ -153,22 +154,24 @@ namespace AsNum.Throttle
         }
 
 
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private void Counter_OnReset(object sender, EventArgs e)
         {
             this.OnPeriodElapsed?.Invoke(this, new PeriodElapsedEventArgs());
             this.TryProcessQueue();
         }
 
-
         /// <summary>
         /// 
         /// </summary>
         /// <param name="task"></param>
-        private void Enqueue(Task task)
+        /// <param name="tag"></param>
+        private void Unwrap(Task task, string tag)
         {
-            //用于标识 Task
-            var tag = $"{this.ThrottleName}#{this.ThrottleID}#{task.Id}";
-
             var _tsk = task;
             // 这里对应的是 Throttle.Execute(Action)
             if (task is Task<Task> t)
@@ -182,30 +185,33 @@ namespace AsNum.Throttle
                 _tsk = tt.GetUnwrapped();
             }
 
-            _tsk.ContinueWith(tt =>
+            _tsk.ContinueWith(async tt =>
             {
                 //当任务执行完时, 才能阻止队列的一个空间出来,供下一个任务进入
-                this.block.Release(tag);
+                await this.block.Release(tag);
                 this.performanceCounter?.DecrementQueue();
-                //this.performanceCounter?.AddExecuted();
+            });
+        }
 
-                //Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff}..................Release");
-                //Interlocked.Increment(ref this._totalExecuted);
 
-            }, TaskContinuationOptions.AttachedToParent);
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="task"></param>
+        private async Task Enqueue(Task task)
+        {
+            //用于标识 Task
+            //var tag = $"{this.ThrottleName}#{this.ThrottleID}#{task.Id}";
+            var tag = task.Id.ToString();
 
+            this.Unwrap(task, tag);
 
             //占用一个空间, 如果空间占满, 会无限期等待,直至有空间释放出来
-            this.block.Acquire(tag);
+            await this.block.Acquire(tag);
             //占用一个空间后, 才能将任务插入队列
             this.tsks.Enqueue(task);
 
             this.performanceCounter?.IncrementQueue();
-
-            //Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff}..................Add");
-
-
-            //Interlocked.Increment(ref this._totalEnqueued);
 
             //尝试执行任务.因为初始状态下, 任务队列是空的, while 循环已退出.
             this.TryProcessQueue();
@@ -228,7 +234,6 @@ namespace AsNum.Throttle
                     return;
 
                 this.inProcess = true;
-                //Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff}..................TryProcess {this.FreeSpace}");
                 try
                 {
                     ProcessQueue();
@@ -242,6 +247,29 @@ namespace AsNum.Throttle
         }
 
 
+        //private async Task TryProcessQueue2()
+        //{
+        //    if (this.inProcess)
+        //        return;
+
+        //    Monitor.Enter(this.lockObj);
+        //    if (this.inProcess)
+        //        return;
+
+        //    this.inProcess = true;
+        //    try
+        //    {
+        //        await ProcessQueue();
+        //    }
+        //    finally
+        //    {
+        //        inProcess = false;
+        //    }
+        //    Monitor.Exit(this.lockObj);
+
+        //}
+
+
         /// <summary>
         /// 
         /// </summary>
@@ -249,10 +277,14 @@ namespace AsNum.Throttle
         {
             //当 当前计数 小于周期内最大允许的任务数
             //且 任务队列中有任务可以取出来
+            //
+            //如果是分布式的, 多个进程同时获取到 CurrentCount 小于 MaxCountPerPeriod
+            //为了保证不超过 MaxCountPerPeriod 的限定, 就需要保证每个进程里已压入的任务总数小于 MaxCountPerPeriod
+            //所以, 分布式的, 要保证同一时间内,所有节点压入的任务总数要小于 MaxCountPerPeriod
+            //所以, 分布式的 Block 不能用 DefaultBlock 代替.
             while ((this.counter.CurrentCount < this.MaxCountPerPeriod)
                 && tsks.TryDequeue(out Task tsk))
             {
-                //Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff}..................Dequeue");
                 this.counter.IncrementCount();
                 //执行任务
                 tsk.Start();
@@ -271,11 +303,11 @@ namespace AsNum.Throttle
         /// <param name="cancellation"></param>
         /// <param name="creationOptions"></param>
         /// <returns></returns>
-        public Task<T> Execute<T>(Func<T> func, CancellationToken cancellation = default, TaskCreationOptions creationOptions = TaskCreationOptions.None)
+        public async Task<T> Execute<T>(Func<T> func, CancellationToken cancellation = default, TaskCreationOptions creationOptions = TaskCreationOptions.None)
         {
             var t = new Task<T>(func, cancellation, creationOptions);
-            this.Enqueue(t);
-            return t;
+            await this.Enqueue(t);
+            return await t;
         }
 
         /// <summary>
@@ -287,11 +319,11 @@ namespace AsNum.Throttle
         /// <param name="cancellation"></param>
         /// <param name="creationOptions"></param>
         /// <returns></returns>
-        public Task<T> Execute<T>(Func<object, T> func, object state, CancellationToken cancellation = default, TaskCreationOptions creationOptions = TaskCreationOptions.None)
+        public async Task<T> Execute<T>(Func<object, T> func, object state, CancellationToken cancellation = default, TaskCreationOptions creationOptions = TaskCreationOptions.None)
         {
             var t = new Task<T>(func, state, cancellation, creationOptions);
-            this.Enqueue(t);
-            return t;
+            await this.Enqueue(t);
+            return await t;
         }
         #endregion
 
@@ -305,11 +337,11 @@ namespace AsNum.Throttle
         /// <param name="cancellation"></param>
         /// <param name="creationOptions"></param>
         /// <returns></returns>
-        public Task<T> Execute<T>(Func<Task<T>> func, CancellationToken cancellation = default, TaskCreationOptions creationOptions = TaskCreationOptions.None)
+        public async Task<T> Execute<T>(Func<Task<T>> func, CancellationToken cancellation = default, TaskCreationOptions creationOptions = TaskCreationOptions.None)
         {
             var t = new WrapFuncTask<T>(func, cancellation, creationOptions);
-            this.Enqueue(t);
-            return t.Result;
+            await this.Enqueue(t);
+            return await t.Result;
         }
 
 
@@ -322,11 +354,11 @@ namespace AsNum.Throttle
         /// <param name="cancellation"></param>
         /// <param name="creationOptions"></param>
         /// <returns></returns>
-        public Task<T> Execute<T>(Func<object, Task<T>> func, object state, CancellationToken cancellation = default, TaskCreationOptions creationOptions = TaskCreationOptions.None)
+        public async Task<T> Execute<T>(Func<object, Task<T>> func, object state, CancellationToken cancellation = default, TaskCreationOptions creationOptions = TaskCreationOptions.None)
         {
             var t = new WrapFuncTask<T>(func, state, cancellation, creationOptions);
-            this.Enqueue(t);
-            return t.Result;
+            await this.Enqueue(t);
+            return await t.Result;
         }
         #endregion
 
@@ -339,11 +371,11 @@ namespace AsNum.Throttle
         /// <param name="cancellation"></param>
         /// <param name="creationOptions"></param>
         /// <returns></returns>
-        public Task Execute(Action act, CancellationToken cancellation = default, TaskCreationOptions creationOptions = TaskCreationOptions.None)
+        public async Task Execute(Action act, CancellationToken cancellation = default, TaskCreationOptions creationOptions = TaskCreationOptions.None)
         {
             var t = new Task(act, cancellation, creationOptions);
-            this.Enqueue(t);
-            return t;
+            await this.Enqueue(t);
+            await t;
         }
 
         /// <summary>
@@ -354,11 +386,11 @@ namespace AsNum.Throttle
         /// <param name="cancellation">动作的参数</param>
         /// <param name="creationOptions"></param>
         /// <returns></returns>
-        public Task Execute<T>(Action<object> act, object state, CancellationToken cancellation = default, TaskCreationOptions creationOptions = TaskCreationOptions.None)
+        public async Task Execute<T>(Action<object> act, object state, CancellationToken cancellation = default, TaskCreationOptions creationOptions = TaskCreationOptions.None)
         {
             var t = new Task(act, state, cancellation, creationOptions);
-            this.Enqueue(t);
-            return t;
+            await this.Enqueue(t);
+            await t;
         }
 
         #endregion

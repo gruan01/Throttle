@@ -1,7 +1,9 @@
 ﻿using StackExchange.Redis;
 using System;
 using System.Collections.Generic;
+using System.Security.Cryptography;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace AsNum.Throttle.Redis
 {
@@ -90,6 +92,47 @@ namespace AsNum.Throttle.Redis
             return defaultValue;
         }
 
+#if !NET451
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="db"></param>
+        /// <param name="key"></param>
+        /// <param name="defaultValue"></param>
+        /// <param name="flags"></param>
+        /// <returns></returns>
+        public static async ValueTask<int> StringGetIntAsync(this IDatabase db, RedisKey key, int defaultValue = default, CommandFlags flags = CommandFlags.None)
+        {
+            var v = await db.StringGetAsync(key, flags);
+            if (v != RedisValue.Null)
+            {
+                if (v.TryParse(out int vv))
+                    return vv;
+            }
+
+            return defaultValue;
+        }
+#else
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="db"></param>
+        /// <param name="key"></param>
+        /// <param name="defaultValue"></param>
+        /// <param name="flags"></param>
+        /// <returns></returns>
+        public static async Task<int> StringGetIntAsync(this IDatabase db, RedisKey key, int defaultValue = default, CommandFlags flags = CommandFlags.None)
+        {
+            var v = await db.StringGetAsync(key, flags);
+            if (v != RedisValue.Null)
+            {
+                if (v.TryParse(out int vv))
+                    return vv;
+            }
+
+            return defaultValue;
+        }
+#endif
 
         /// <summary>
         /// 
@@ -110,6 +153,33 @@ namespace AsNum.Throttle.Redis
         internal static string LockCountKey(this string throttleName)
         {
             return $"{throttleName}:lockCount";
+        }
+
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="input"></param>
+        /// <param name="toUpper"></param>
+        /// <param name="encoding">如果为 NULL, 则默认使用 UTF8</param>
+        /// <returns></returns>
+        internal static string To16bitMD5(this string input, bool toUpper = false, Encoding encoding = null)
+        {
+            if (string.IsNullOrEmpty(input))
+                return "";
+
+            if (encoding == null)
+                encoding = Encoding.UTF8;
+
+            using (var md5 = new MD5CryptoServiceProvider())
+            {
+                string result = BitConverter.ToString(md5.ComputeHash(encoding.GetBytes(input)), 4, 8);
+                var s = result.Replace("-", "");
+                if (toUpper)
+                    return s.ToUpper();
+                else
+                    return s.ToLower();
+            }
         }
     }
 }

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Timers;
 
 namespace AsNum.Throttle
@@ -50,6 +51,7 @@ namespace AsNum.Throttle
         private void Timer_Elapsed(object sender, ElapsedEventArgs e)
         {
             Interlocked.Exchange(ref this._currentCount, 0);
+            this.ResetFired();
         }
 
         /// <summary>

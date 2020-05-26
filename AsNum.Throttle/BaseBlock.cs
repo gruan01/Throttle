@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace AsNum.Throttle
 {
@@ -14,6 +15,11 @@ namespace AsNum.Throttle
         /// 
         /// </summary>
         protected string ThrottleName { get; private set; }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        protected string ThrottleID { get; private set; }
 
         /// <summary>
         /// 
@@ -34,24 +40,26 @@ namespace AsNum.Throttle
         /// <summary>
         /// 尝试占用一个位置
         /// </summary>
-        public abstract void Acquire(string tag);
+        public abstract Task Acquire(string tag);
 
         /// <summary>
         /// 释放一个位置
         /// </summary>
-        public abstract void Release(string tag);
+        public abstract Task Release(string tag);
 
 
         /// <summary>
         /// 
         /// </summary>
         /// <param name="throttleName"></param>
+        /// <param name="throttleID"></param>
         /// <param name="boundedCapacity"></param>
         /// <param name="throttlePeriod"></param>
         /// <param name="blockTimeout"></param>
-        internal void Setup(string throttleName, int boundedCapacity, TimeSpan throttlePeriod, TimeSpan? blockTimeout)
+        internal void Setup(string throttleName, string throttleID, int boundedCapacity, TimeSpan throttlePeriod, TimeSpan? blockTimeout)
         {
             this.ThrottleName = throttleName;
+            this.ThrottleID = throttleID;
             this.BoundedCapacity = boundedCapacity;
             this.ThrottlePeriod = throttlePeriod;
             this.BlockTimeout = blockTimeout;

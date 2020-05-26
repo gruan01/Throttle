@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace AsNum.Throttle
 {
@@ -12,6 +13,9 @@ namespace AsNum.Throttle
     public abstract class BaseCounter : IDisposable
     {
 
+        /// <summary>
+        /// 
+        /// </summary>
         internal event EventHandler<EventArgs> OnReset;
 
         /// <summary>

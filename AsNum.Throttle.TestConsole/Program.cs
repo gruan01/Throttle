@@ -11,7 +11,7 @@ namespace AsNum.Throttle.TestConsole
 {
     class Program
     {
-        static readonly Tester Tester = new Tester(10, TimeSpan.FromSeconds(5));
+        static readonly Tester Tester = new Tester(1000, TimeSpan.FromSeconds(5));
 
         static async Task Main(string[] args)
         {
