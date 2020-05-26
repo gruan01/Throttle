@@ -107,6 +107,9 @@ namespace AsNum.Throttle.Redis
         /// <param name="localBlockCapacity">本地阻止队列的容量</param>
         public RedisBlock(ConnectionMultiplexer connection, int retryAddInterval = 100, int lockTimeout = 5000, int localBlockCapacity = 20)
         {
+            if (localBlockCapacity <= 0)
+                throw new ArgumentOutOfRangeException(nameof(localBlockCapacity), "必须大于0");
+
             this.Connection = connection ?? throw new ArgumentNullException(nameof(connection));
             this.RetryAddInterval = retryAddInterval;
             this.LockTimeout = lockTimeout;

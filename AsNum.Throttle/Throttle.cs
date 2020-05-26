@@ -213,6 +213,7 @@ namespace AsNum.Throttle
 
             this.performanceCounter?.IncrementQueue();
 
+            await Task.Yield();
             //尝试执行任务.因为初始状态下, 任务队列是空的, while 循环已退出.
             this.TryProcessQueue();
         }
@@ -245,29 +246,6 @@ namespace AsNum.Throttle
             }
 
         }
-
-
-        //private async Task TryProcessQueue2()
-        //{
-        //    if (this.inProcess)
-        //        return;
-
-        //    Monitor.Enter(this.lockObj);
-        //    if (this.inProcess)
-        //        return;
-
-        //    this.inProcess = true;
-        //    try
-        //    {
-        //        await ProcessQueue();
-        //    }
-        //    finally
-        //    {
-        //        inProcess = false;
-        //    }
-        //    Monitor.Exit(this.lockObj);
-
-        //}
 
 
         /// <summary>
