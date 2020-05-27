@@ -38,15 +38,9 @@ namespace AsNum.Throttle.Redis
 
 
         /// <summary>
-        /// 本地阻止队列, 用于批量操作 Redis
+        /// 
         /// </summary>
-        public int LocalBlockCapacity { get; }
-
-
-        /// <summary>
-        /// 本地队列
-        /// </summary>
-        private BlockingCollection<string> localBlocks;
+        private SemaphoreSlim semaphoreSlim;
 
 
         /// <summary>
@@ -88,11 +82,9 @@ namespace AsNum.Throttle.Redis
         private bool lastPushSucc = true;
 
         /// <summary>
-        /// 当 Task 压入时, 立即生成一个对应的 AutoResetEvent, 并发布一个含有该 Task 标识的消息
-        /// 当消息处理器获取到该消息时, 将该 AutoResetEvent 设置为绿灯, 从而模拟 BlockingCollection 的特性.
+        /// 
         /// </summary>
-        private readonly ConcurrentDictionary<string, AutoResetEvent> autoResetEvents = new ConcurrentDictionary<string, AutoResetEvent>();
-
+        private readonly ConcurrentBag<byte> bag = new ConcurrentBag<byte>();
 
         /// <summary>
         /// 
@@ -106,30 +98,20 @@ namespace AsNum.Throttle.Redis
         /// <param name="connection"></param>
         /// <param name="retryAddInterval">尝试压入 block 的重试周期(毫秒)</param>
         /// <param name="lockTimeout">分布锁的过期时间(毫秒), 预防应用程序挂掉, 导至死锁</param>
-        /// <param name="localBlockCapacity">本地阻止队列的容量, 不是越大越好, 太大会导至发布消息缓慢, 20似乎是个完美的值.</param>
-        public RedisBlock(ConnectionMultiplexer connection, int retryAddInterval = 100, int lockTimeout = 5000, int localBlockCapacity = 20)
+        public RedisBlock(ConnectionMultiplexer connection, int retryAddInterval = 100, int lockTimeout = 5000)
         {
-            if (localBlockCapacity <= 0)
-                throw new ArgumentOutOfRangeException(nameof(localBlockCapacity), "必须大于0");
-
             this.Connection = connection ?? throw new ArgumentNullException(nameof(connection));
             this.RetryAddInterval = retryAddInterval;
             this.LockTimeout = lockTimeout;
-            this.LocalBlockCapacity = localBlockCapacity;
             this.subscriber = connection.GetSubscriber();
             this.db = connection.GetDatabase();
             this.subscriber.Ping();
 
             this.handler = (c, v) =>
             {
-                var ts = ((string)v).Split(',');
-
-                foreach (var t in ts)
+                if (v.TryParse(out int n))
                 {
-                    if (this.autoResetEvents.TryGetValue(t, out AutoResetEvent ae))
-                    {
-                        ae.Set();
-                    }
+                    this.semaphoreSlim?.Release(n);
                 }
             };
         }
@@ -145,17 +127,12 @@ namespace AsNum.Throttle.Redis
             //ThreadPool.QueueUserWorkItem(new WaitCallback(AA));
         }
 
-        //private void AA(object state)
-        //{
-        //    this.TryPush();
-        //}
-
         /// <summary>
         /// 
         /// </summary>
         protected override void Initialize()
         {
-            this.localBlocks = new BlockingCollection<string>(Math.Min(this.BoundedCapacity, this.LocalBlockCapacity));
+            this.semaphoreSlim = new SemaphoreSlim(this.BoundedCapacity, this.BoundedCapacity);
             this.subscriber.Subscribe(this.Channel, this.handler);
             this.subscriber.Subscribe(this.HeartChannel, (c, v) => { });
 
@@ -185,16 +162,8 @@ namespace AsNum.Throttle.Redis
         /// </summary>
         public override async Task Acquire(string tag)
         {
-            this.localBlocks.Add(tag);
-            //生成一个对应的信号灯, 等待绿灯放行.
-            using var ar = this.autoResetEvents.GetOrAdd(tag, new AutoResetEvent(false));
-            //Dely 会使 localBlocks 里的数量多于1个, 因为该方法是异步方法.
-            //从而节省跟 Redis 的操作次数.
-            //如果不用 Delay , 很可能就是每请求一次 Acquire , 就会操作 Redis 一次, 严重影响性能.
-            await Task.Delay(this.RetryAddInterval);
-            //等待订阅处理方法里的绿灯
-            ar.WaitOne();
-            this.autoResetEvents.TryRemove(tag, out _);
+            await this.semaphoreSlim.WaitAsync();
+            this.bag.Add(0);
         }
 
 
@@ -235,7 +204,7 @@ namespace AsNum.Throttle.Redis
             //让执行看起来公平一点.
             if (this.isSingleClient || !this.lastPushSucc)
             {
-                if (this.localBlocks?.Count > 0)
+                if (this.bag?.Count > 0)
                 {
                     var lockCountKey = this.ThrottleName.LockCountKey();
                     var lockKey = this.ThrottleName.LockKey();
@@ -249,23 +218,24 @@ namespace AsNum.Throttle.Redis
                             var n = Math.Max(await db.StringGetIntAsync(lockCountKey), 0);
 
                             //还可以塞多少个进来
-                            var c = Math.Min(this.BoundedCapacity - n, this.localBlocks.Count);
+                            var c = Math.Min(this.BoundedCapacity - n, this.bag.Count);
                             if (c > 0)
                             {
-                                var ts = new List<string>();
+
+                                var x = 0;
                                 for (var i = 0; i < c; i++)
                                 {
-                                    if (this.localBlocks.TryTake(out string tag))
+                                    if (this.bag.TryTake(out _))
                                     {
-                                        ts.Add(tag);
+                                        x++;
                                     }
                                 }
 
-                                await this.subscriber.PublishAsync(this.Channel, string.Join(",", ts));
+                                await this.subscriber.PublishAsync(this.Channel, x);
                                 if (n == 0)
-                                    await db.StringSetAsync(lockCountKey, ts.Count, flags: CommandFlags.DemandMaster);
+                                    await db.StringSetAsync(lockCountKey, x, flags: CommandFlags.DemandMaster);
                                 else
-                                    await db.StringIncrementAsync(lockCountKey, ts.Count, flags: CommandFlags.DemandMaster);
+                                    await db.StringIncrementAsync(lockCountKey, x, flags: CommandFlags.DemandMaster);
 
                                 await db.KeyExpireAsync(lockCountKey, this.ThrottlePeriod, flags: CommandFlags.DemandMaster);
 
@@ -290,7 +260,7 @@ namespace AsNum.Throttle.Redis
         /// </summary>
         protected override void InnerDispose()
         {
-            this.localBlocks?.Dispose();
+            this.semaphoreSlim?.Dispose();
             this.subscriber?.Unsubscribe(this.Channel);
             this.subscriber?.Unsubscribe(this.HeartChannel);
             this.timer?.Dispose();

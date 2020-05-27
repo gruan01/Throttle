@@ -26,7 +26,7 @@ namespace AsNum.Throttle.CoreTest
         /// <param name="n"></param>
         public Tester(int boundry, TimeSpan period)
         {
-            this.Conn = ConnectionMultiplexer.Connect("localhost:6379");
+            this.Conn = ConnectionMultiplexer.Connect("localhost:53492");
 
             this.Counter = new RedisCounter(this.Conn);
             //this.Block = new CrossProcess.CrossProcessBlock();
