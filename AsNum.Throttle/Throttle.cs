@@ -19,6 +19,10 @@ namespace AsNum.Throttle
         /// </summary>
         public event EventHandler<PeriodElapsedEventArgs> OnPeriodElapsed;
 
+        /// <summary>
+        /// 
+        /// </summary>
+        public event EventHandler<ErrorEventArgs> OnError;
 
         /// <summary>
         /// 当前 ThrottleID 的 ID, 随机分配.
@@ -186,9 +190,16 @@ namespace AsNum.Throttle
 
             _tsk.ContinueWith(async tt =>
             {
-                //当任务执行完时, 才能阻止队列的一个空间出来,供下一个任务进入
-                await this.block.Release(tag);
-                this.performanceCounter?.DecrementQueue();
+                try
+                {
+                    //当任务执行完时, 才能阻止队列的一个空间出来,供下一个任务进入
+                    await this.block.Release(tag);
+                    this.performanceCounter?.DecrementQueue();
+                }
+                catch (Exception e)
+                {
+                    this.OnError?.Invoke(this, new ErrorEventArgs() { Ex = e });
+                }
             });
         }
 
@@ -205,8 +216,16 @@ namespace AsNum.Throttle
 
             this.Unwrap(task, tag);
 
-            //占用一个空间, 如果空间占满, 会无限期等待,直至有空间释放出来
-            await this.block.Acquire(tag);
+            try
+            {
+                //占用一个空间, 如果空间占满, 会无限期等待,直至有空间释放出来
+                await this.block.Acquire(tag);
+            }
+            catch (Exception e)
+            {
+                this.OnError?.Invoke(this, new ErrorEventArgs() { Ex = e });
+            }
+
             //占用一个空间后, 才能将任务插入队列
             this.tsks.Enqueue(task);
 
@@ -282,6 +301,10 @@ namespace AsNum.Throttle
                                     await this.counter.IncrementCount(x);
                             }
 
+                        }
+                        catch (Exception e)
+                        {
+                            this.OnError?.Invoke(this, new ErrorEventArgs() { Ex = e });
                         }
                         finally
                         {
