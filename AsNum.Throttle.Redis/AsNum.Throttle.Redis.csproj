@@ -19,6 +19,7 @@
     <PackageProjectUrl>https://github.com/gruan01/Throttle</PackageProjectUrl>
     <FileVersion>1.0.3.1</FileVersion>
     <Version>1.0.0</Version>
+    <PackageReleaseNotes>RedisCounter require enable notify-keyspace-events Ex</PackageReleaseNotes>
   </PropertyGroup>
 
   <PropertyGroup Condition=" '$(TargetFramework)' == 'net451'">
