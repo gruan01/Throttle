@@ -23,6 +23,11 @@ namespace AsNum.Throttle
         /// </summary>
         public string ThrottleName { get; private set; }
 
+        /// <summary>
+        /// 
+        /// </summary>
+        public string ThrottleID { get; private set; }
+
 
         /// <summary>
         /// 
@@ -33,16 +38,38 @@ namespace AsNum.Throttle
         /// <summary>
         /// 
         /// </summary>
-        public abstract int CurrentCount { get; }
+        public int BoundedCapacity { get; private set; }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        public abstract int BatchCount { get; }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        public abstract ValueTask<int> CurrentCount();
 
 
         /// <summary>
         /// 
         /// </summary>
         /// <returns></returns>
-        public abstract int IncrementCount();
+        public abstract ValueTask<int> IncrementCount(int n);
 
 
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <returns></returns>
+        public abstract ValueTask<bool> TryLock();
+
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <returns></returns>
+        public abstract Task ReleaseLock();
 
         /// <summary>
         /// 
@@ -57,12 +84,16 @@ namespace AsNum.Throttle
         /// 
         /// </summary>
         /// <param name="throttleName"></param>
+        /// <param name="throttleID"></param>
+        /// <param name="boundedCapacity"></param>
         /// <param name="throttlePeriod"></param>
-        internal void SetUp(string throttleName, TimeSpan throttlePeriod)
+        internal void SetUp(string throttleName, string throttleID, int boundedCapacity, TimeSpan throttlePeriod)
         {
             this.ThrottleName = throttleName;
+            this.ThrottleID = throttleID;
 
             this.ThrottlePeriod = throttlePeriod;
+            this.BoundedCapacity = boundedCapacity;
 
             this.Initialize();
         }

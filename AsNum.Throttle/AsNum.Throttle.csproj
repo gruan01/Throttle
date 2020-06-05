@@ -8,15 +8,19 @@
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <PackageTags>AsNum</PackageTags>
     <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
-    <PackageVersion>1.0.3</PackageVersion>
-    <AssemblyVersion>1.0.3</AssemblyVersion>
+    <PackageVersion>1.0.4-beta</PackageVersion>
+    <AssemblyVersion>1.0.4</AssemblyVersion>
     <Authors>xling</Authors>
     <LangVersion>8.0</LangVersion>
     <Description>Action / Func throttle in a period</Description>
     <DocumentationFile>bin\$(Configuration)\$(TargetFramework)\$(AssemblyName).xml</DocumentationFile>
     <RepositoryUrl>https://github.com/gruan01/Throttle</RepositoryUrl>
     <PackageProjectUrl>https://github.com/gruan01/Throttle</PackageProjectUrl>
-    <FileVersion>1.0.3</FileVersion>
+    <FileVersion>1.0.4</FileVersion>
   </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Threading.Tasks.Extensions" Version="4.5.2" />
+  </ItemGroup>
 
 </Project>

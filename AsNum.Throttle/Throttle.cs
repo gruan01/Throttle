@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -124,13 +125,11 @@ namespace AsNum.Throttle
 
 
             this.counter = counter ?? throw new ArgumentNullException(nameof(counter));
-            this.counter.SetUp(throttleName, this.Period);
+            this.counter.SetUp(throttleName, this.ThrottleID, maxCountPerPeriod, this.Period);
             this.counter.OnReset += Counter_OnReset;
 
             this.performanceCounter = performanceCounter;
             this.performanceCounter?.SetUp(throttleName);
-
-            this.TryProcessQueue();
         }
 
 
@@ -162,7 +161,7 @@ namespace AsNum.Throttle
         private void Counter_OnReset(object sender, EventArgs e)
         {
             this.OnPeriodElapsed?.Invoke(this, new PeriodElapsedEventArgs());
-            this.TryProcessQueue();
+            this.ProcessQueue();
         }
 
         /// <summary>
@@ -215,60 +214,87 @@ namespace AsNum.Throttle
 
             await Task.Yield();
             //尝试执行任务.因为初始状态下, 任务队列是空的, while 循环已退出.
-            this.TryProcessQueue();
+            this.ProcessQueue();
         }
 
 
+        ///// <summary>
+        ///// 
+        ///// </summary>
+        //private void ProcessQueue()
+        //{
+        //    //当 当前计数 小于周期内最大允许的任务数
+        //    //且 任务队列中有任务可以取出来
+        //    //
+        //    //如果是分布式的, 多个进程同时获取到 CurrentCount 小于 MaxCountPerPeriod
+        //    //为了保证不超过 MaxCountPerPeriod 的限定, 就需要保证每个进程里已压入的任务总数小于 MaxCountPerPeriod
+        //    //所以, 分布式的, 要保证同一时间内,所有节点压入的任务总数要小于 MaxCountPerPeriod
+        //    //所以, 分布式的 Block 不能用 DefaultBlock 代替.
+        //    while ((this.counter.CurrentCount < this.MaxCountPerPeriod)
+        //        && tsks.TryDequeue(out Task tsk))
+        //    {
+        //        this.counter.IncrementCount();
+        //        //执行任务
+        //        tsk.Start();
+        //    }
+        //}
 
 
-        /// <summary>
-        /// 
-        /// </summary>
-        private void TryProcessQueue()
+        private void ProcessQueue()
         {
             if (this.inProcess)
                 return;
 
-            lock (this.lockObj)
+            Monitor.Enter(this.lockObj);
+            this.inProcess = true;
+            Monitor.Exit(this.lockObj);
+
+            Task.Run(async () =>
             {
-                if (this.inProcess)
-                    return;
-
-                this.inProcess = true;
-                try
+                while (this.tsks.Count > 0)
                 {
-                    ProcessQueue();
+                    if (await this.counter.TryLock())
+                    {
+                        try
+                        {
+                            //当前计数
+                            var currCount = await this.counter.CurrentCount();
+                            if (currCount < this.MaxCountPerPeriod)
+                            {
+                                //还有多少位置
+                                var space = Math.Max(this.MaxCountPerPeriod - currCount, 0);
+                                //可以插入几个
+                                var n = Math.Min(this.counter.BatchCount, space);
+
+                                var x = 0;
+                                for (var i = 0; i < n; i++)
+                                {
+                                    if (tsks.TryDequeue(out Task tsk))
+                                    {
+                                        x++;
+                                        tsk.Start();
+                                    }
+                                    else
+                                        break;
+                                }
+
+                                if (x > 0)
+                                    await this.counter.IncrementCount(x);
+                            }
+
+                        }
+                        finally
+                        {
+                            await this.counter.ReleaseLock();
+                        }
+                    }
                 }
-                finally
-                {
-                    inProcess = false;
-                }
-            }
 
+                Monitor.Enter(this.lockObj);
+                this.inProcess = false;
+                Monitor.Exit(this.lockObj);
+            });
         }
-
-
-        /// <summary>
-        /// 
-        /// </summary>
-        private void ProcessQueue()
-        {
-            //当 当前计数 小于周期内最大允许的任务数
-            //且 任务队列中有任务可以取出来
-            //
-            //如果是分布式的, 多个进程同时获取到 CurrentCount 小于 MaxCountPerPeriod
-            //为了保证不超过 MaxCountPerPeriod 的限定, 就需要保证每个进程里已压入的任务总数小于 MaxCountPerPeriod
-            //所以, 分布式的, 要保证同一时间内,所有节点压入的任务总数要小于 MaxCountPerPeriod
-            //所以, 分布式的 Block 不能用 DefaultBlock 代替.
-            while ((this.counter.CurrentCount < this.MaxCountPerPeriod)
-                && tsks.TryDequeue(out Task tsk))
-            {
-                this.counter.IncrementCount();
-                //执行任务
-                tsk.Start();
-            }
-        }
-
 
         #region execute
 

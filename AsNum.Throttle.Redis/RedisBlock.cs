@@ -65,16 +65,6 @@ namespace AsNum.Throttle.Redis
         /// </summary>
         private string Channel => $"{this.ThrottleName}#{this.ThrottleID}".To16bitMD5();
 
-        /// <summary>
-        /// 心跳 Channel , 用于确定有多少客户端同时运行
-        /// </summary>
-        private string HeartChannel => $"{this.ThrottleName}#heart";
-
-
-        /// <summary>
-        /// 是否只有一个客户端
-        /// </summary>
-        private bool isSingleClient = true;
 
         /// <summary>
         /// 最后一次是不是该客户端获取了锁
@@ -91,6 +81,11 @@ namespace AsNum.Throttle.Redis
         /// </summary>
         private Timer timer;
 
+        /// <summary>
+        /// 
+        /// </summary>
+        private Heart heart;
+
 
         /// <summary>
         /// 
@@ -105,7 +100,6 @@ namespace AsNum.Throttle.Redis
             this.LockTimeout = lockTimeout;
             this.subscriber = connection.GetSubscriber();
             this.db = connection.GetDatabase();
-            this.subscriber.Ping();
 
             this.handler = (c, v) =>
             {
@@ -134,9 +128,7 @@ namespace AsNum.Throttle.Redis
         {
             this.semaphoreSlim = new SemaphoreSlim(this.BoundedCapacity, this.BoundedCapacity);
             this.subscriber.Subscribe(this.Channel, this.handler);
-            this.subscriber.Subscribe(this.HeartChannel, (c, v) => { });
-
-            this.Heart();
+            this.heart = Heart.GetInstance(this.ThrottleName, this.subscriber);
 
             this.timer = new Timer(new TimerCallback(Timer_Elapsed), null, 0, this.RetryAddInterval);
         }
@@ -147,7 +139,7 @@ namespace AsNum.Throttle.Redis
         /// </summary>
         public override async Task Release(string tag)
         {
-            var lockCountKey = this.ThrottleName.LockCountKey();
+            var lockCountKey = this.ThrottleName.ToBlockCountKey();
             await this.db.StringDecrementAsync(lockCountKey);
             //假如这里不设置过期时间, 而只是在 Increment 那里设置.
             //则, 当没有新任务进入, 老任务又没有执行完
@@ -166,25 +158,6 @@ namespace AsNum.Throttle.Redis
             this.bag.Add(0);
         }
 
-
-        /// <summary>
-        /// 定时发布一个空消息, 确定有多少个客户端在同时运行.
-        /// </summary>
-        private void Heart()
-        {
-            Task.Run(async () =>
-            {
-                while (true)
-                {
-                    //发布空消息
-                    var clients = await this.subscriber.PublishAsync(this.HeartChannel, "");
-                    this.isSingleClient = clients <= 1;
-                    await Task.Delay(this.RetryAddInterval);
-                }
-            });
-        }
-
-
         /// <summary>
         /// 
         /// </summary>
@@ -202,12 +175,12 @@ namespace AsNum.Throttle.Redis
             //由于 RetryAddInterval 都是一样的, 所以第一次是 A 获取锁, 第二次还是 A 会获取锁.第N次还是A会获取锁.
             //所以这里, 如果是多客户端, 且最后一次是当前客户端, 就让出一个时间片给其它客户端.
             //让执行看起来公平一点.
-            if (this.isSingleClient || !this.lastPushSucc)
+            if (this.heart.IsSingleClient || !this.lastPushSucc)
             {
                 if (this.bag?.Count > 0)
                 {
-                    var lockCountKey = this.ThrottleName.LockCountKey();
-                    var lockKey = this.ThrottleName.LockKey();
+                    var lockCountKey = this.ThrottleName.ToBlockCountKey();
+                    var lockKey = this.ThrottleName.ToBlockLockKey();
 
                     if (await db.LockTakeAsync(lockKey, this.ThrottleID, TimeSpan.FromMilliseconds(this.LockTimeout)))
                     {
@@ -262,7 +235,6 @@ namespace AsNum.Throttle.Redis
         {
             this.semaphoreSlim?.Dispose();
             this.subscriber?.Unsubscribe(this.Channel);
-            this.subscriber?.Unsubscribe(this.HeartChannel);
             this.timer?.Dispose();
         }
 

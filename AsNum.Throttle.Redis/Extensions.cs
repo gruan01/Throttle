@@ -74,7 +74,6 @@ namespace AsNum.Throttle.Redis
         /// <summary>
         /// 
         /// </summary>
-        /// <typeparam name="T"></typeparam>
         /// <param name="db"></param>
         /// <param name="key"></param>
         /// <param name="defaultValue"></param>
@@ -139,9 +138,9 @@ namespace AsNum.Throttle.Redis
         /// </summary>
         /// <param name="throttleName"></param>
         /// <returns></returns>
-        internal static string LockKey(this string throttleName)
+        internal static string ToBlockLockKey(this string throttleName)
         {
-            return $"{throttleName}:lock";
+            return $"{throttleName}:block:lock";
         }
 
 
@@ -150,9 +149,30 @@ namespace AsNum.Throttle.Redis
         /// </summary>
         /// <param name="throttleName"></param>
         /// <returns></returns>
-        internal static string LockCountKey(this string throttleName)
+        internal static string ToBlockCountKey(this string throttleName)
         {
-            return $"{throttleName}:lockCount";
+            return $"{throttleName}:block:lockCount";
+        }
+
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="throttleName"></param>
+        /// <returns></returns>
+        internal static string ToCounterLockKey(this string throttleName)
+        {
+            return $"{throttleName}:counter:lock";
+        }
+
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <returns></returns>
+        internal static string ToCounterCountKey(this string throttleName)
+        {
+            return $"{throttleName}:counter:count";
         }
 
 

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace AsNum.Throttle
 {
@@ -14,10 +15,11 @@ namespace AsNum.Throttle
         /// </summary>
         private int _currentCount;
 
+
         /// <summary>
         /// 
         /// </summary>
-        public override int CurrentCount => this._currentCount;
+        public override int BatchCount => 1;
 
 
         /// <summary>
@@ -43,14 +45,50 @@ namespace AsNum.Throttle
             this.ResetFired();
         }
 
+
         /// <summary>
         /// 
         /// </summary>
         /// <returns></returns>
-        public override int IncrementCount()
+        public override ValueTask<int> CurrentCount()
         {
-            return Interlocked.Increment(ref this._currentCount);
+            return new ValueTask<int>(this._currentCount);
         }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <returns></returns>
+        public override ValueTask<int> IncrementCount(int n)
+        {
+            var a = Interlocked.Add(ref this._currentCount, n);
+            return new ValueTask<int>(a);
+        }
+
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <returns></returns>
+        public override ValueTask<bool> TryLock()
+        {
+            return new ValueTask<bool>(true);
+        }
+
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <returns></returns>
+        public override Task ReleaseLock()
+        {
+#if !NET451
+            return Task.CompletedTask;
+#else
+            return Task.FromResult(true);
+#endif
+        }
+
 
         /// <summary>
         /// 

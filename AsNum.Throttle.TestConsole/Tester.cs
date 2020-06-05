@@ -26,7 +26,7 @@ namespace AsNum.Throttle.CoreTest
         /// <param name="n"></param>
         public Tester(int boundry, TimeSpan period)
         {
-            this.Conn = ConnectionMultiplexer.Connect("localhost:53492");
+            this.Conn = ConnectionMultiplexer.Connect("localhost:6379");
 
             this.Counter = new RedisCounter(this.Conn);
             //this.Block = new CrossProcess.CrossProcessBlock();
@@ -86,7 +86,7 @@ namespace AsNum.Throttle.CoreTest
         private static async Task AA(int i)
         {
             //await Task.Delay(TimeSpan.FromSeconds(6));
-            await Task.Delay(TimeSpan.FromSeconds(2));
+            await Task.Delay(TimeSpan.FromSeconds(1));
             //Console.ForegroundColor = ConsoleColor.Red;
             Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff}\tAA:{i}");
             //Console.ResetColor();
