@@ -28,7 +28,7 @@ namespace AsNum.Throttle.CoreTest
         {
             this.Conn = ConnectionMultiplexer.Connect("localhost:6379");
 
-            this.Counter = new RedisCounter(this.Conn);
+            this.Counter = new RedisCounter(this.Conn, 50);
             //this.Block = new CrossProcess.CrossProcessBlock();
             this.Block = new RedisBlock(this.Conn);
             this.PerformanceCounter = new ThrottlePerformanceCounter();

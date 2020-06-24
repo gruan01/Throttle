@@ -4,6 +4,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace AsNum.Throttle.Redis
@@ -24,6 +25,10 @@ namespace AsNum.Throttle.Redis
         /// </summary>
         private static readonly ConcurrentDictionary<string, Heart> Instances = new ConcurrentDictionary<string, Heart>();
 
+        /// <summary>
+        /// 
+        /// </summary>
+        private static readonly object lockObj = new object();
 
         /// <summary>
         /// 
@@ -75,8 +80,19 @@ namespace AsNum.Throttle.Redis
         /// <returns></returns>
         public static Heart GetInstance(string throttleName, ISubscriber subscriber)
         {
-            var heart = Instances.GetOrAdd(throttleName, new Heart(throttleName));
-            heart.SetUp(subscriber);
+
+            //这样写可能会因为并发, 而声明多个无用的, 占用 Redis 连接
+            //var heart = Instances.GetOrAdd(throttleName, new Heart(throttleName));
+            //heart.SetUp(subscriber);
+
+            Monitor.Enter(lockObj);
+            if (!Instances.TryGetValue(throttleName, out Heart heart))
+            {
+                heart = new Heart(throttleName);
+                heart.SetUp(subscriber);
+                Instances.TryAdd(throttleName, heart);
+            }
+            Monitor.Exit(lockObj);
             return heart;
         }
 
@@ -122,8 +138,9 @@ namespace AsNum.Throttle.Redis
         /// </summary>
         private void Start()
         {
-            Task.Run(async () =>
+            Task.Factory.StartNew(async () =>
             {
+
                 while (true)
                 {
                     //发布空消息
@@ -131,7 +148,8 @@ namespace AsNum.Throttle.Redis
                     this.SubscriberCount = clients;
                     await Task.Delay(Interval);
                 }
-            });
+
+            }, TaskCreationOptions.LongRunning | TaskCreationOptions.PreferFairness);
         }
 
     }

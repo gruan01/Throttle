@@ -6,7 +6,7 @@ namespace AsNum.Throttle.TestConsole
 {
     class Program
     {
-        static readonly Tester Tester = new Tester(100, TimeSpan.FromSeconds(1));
+        static readonly Tester Tester = new Tester(10000, TimeSpan.FromSeconds(30));
 
         static async Task Main(string[] args)
         {
@@ -14,12 +14,12 @@ namespace AsNum.Throttle.TestConsole
             TaskScheduler.UnobservedTaskException += TaskScheduler_UnobservedTaskException;
 
             //var rnd = new Random();
-            Console.WriteLine("请输入要测试的循环次数:[1000]");
+            Console.WriteLine("请输入要测试的循环次数:[10000]");
             var str = Console.ReadLine();
 
             if (!int.TryParse(str, out int n))
             {
-                n = 1000;
+                n = 10000;
             }
 
             await Tester.Run(n);

@@ -17,6 +17,12 @@ namespace AsNum.Throttle.Redis
         /// <summary>
         /// 
         /// </summary>
+        private static readonly string KEY_EXPIRED_CHANNEL = "__keyevent@0__:expired";
+
+
+        /// <summary>
+        /// 
+        /// </summary>
         private readonly int? _batchCount;
 
         /// <summary>
@@ -88,13 +94,13 @@ namespace AsNum.Throttle.Redis
 
             this.heart = Heart.GetInstance(this.ThrottleName, this.subscriber);
 
-            this.subscriber.Subscribe("__keyevent@0__:expired", (channel, value) =>
-            {
-                if (value == this.countKey)
-                {
-                    this.ResetFired();
-                }
-            });
+            this.subscriber.Subscribe(KEY_EXPIRED_CHANNEL, (channel, value) =>
+           {
+               if (value == this.countKey)
+               {
+                   this.ResetFired();
+               }
+           });
         }
 
 
@@ -165,6 +171,7 @@ namespace AsNum.Throttle.Redis
         /// </summary>
         protected override void InnerDispose()
         {
+            this.subscriber.Unsubscribe(KEY_EXPIRED_CHANNEL);
         }
     }
 }

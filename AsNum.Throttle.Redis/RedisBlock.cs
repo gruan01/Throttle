@@ -117,7 +117,11 @@ namespace AsNum.Throttle.Redis
         {
             //TryPush 会试图加锁, 发布消息, 计数,设置过期时间, 所以耗时会多于 RetryAddInterval,
             //这里不能被上面所说的整体操作时间影响, 否则, 会有空转.
-            Task.Run(() => this.TryPush());
+            //Task.Run(() => this.TryPush());
+            Task.Factory.StartNew(async () =>
+            {
+                await this.TryPush();
+            }, TaskCreationOptions.LongRunning | TaskCreationOptions.PreferFairness);
             //ThreadPool.QueueUserWorkItem(new WaitCallback(AA));
         }
 
