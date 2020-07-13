@@ -7,6 +7,7 @@ namespace AsNum.Throttle.Statistic
     /// <summary>
     /// 
     /// </summary>
+    [Obsolete]
     public class ThrottlePerformanceCounter : BasePerformanceCounter
     {
 

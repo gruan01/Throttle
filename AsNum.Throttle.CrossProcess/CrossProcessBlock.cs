@@ -33,8 +33,8 @@ namespace AsNum.Throttle.CrossProcess
         /// </summary>
         public override Task Acquire(string tag)
         {
-            if (this.BlockTimeout.HasValue)
-                this.semaphore.WaitOne(this.BlockTimeout.Value);
+            if (this.LockTimeout.HasValue)
+                this.semaphore.WaitOne(this.LockTimeout.Value);
             else
                 this.semaphore.WaitOne();
 

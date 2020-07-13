@@ -7,6 +7,7 @@ namespace AsNum.Throttle.Performance
     /// <summary>
     /// 
     /// </summary>
+    [Obsolete]
     public class RedisPerformanceCounter : BasePerformanceCounter
     {
         /// <summary>

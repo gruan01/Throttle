@@ -1,8 +1,6 @@
 ﻿using StackExchange.Redis;
 using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -19,6 +17,7 @@ namespace AsNum.Throttle.Redis
     /// 入队一次， 从 REDIS 队列中删除（BLPOP / BRPOP ）一个，则直到 REDIS 队列为空， 就不能在入队了。
     /// 出队一次， 向 REDIS 队列中添加一个。
     /// </summary>
+    [Obsolete]
     public class RedisBlock : BaseBlock
     {
         /// <summary>
@@ -31,10 +30,10 @@ namespace AsNum.Throttle.Redis
         /// </summary>
         public int RetryAddInterval { get; }
 
-        /// <summary>
-        /// 分布锁的过期时间(毫秒), 预防应用程序挂掉, 导至死锁
-        /// </summary>
-        public int LockTimeout { get; }
+        ///// <summary>
+        ///// 分布锁的过期时间(毫秒), 预防应用程序挂掉, 导至死锁
+        ///// </summary>
+        //public int LockTimeout { get; }
 
 
         /// <summary>
@@ -92,12 +91,10 @@ namespace AsNum.Throttle.Redis
         /// </summary>
         /// <param name="connection"></param>
         /// <param name="retryAddInterval">尝试压入 block 的重试周期(毫秒)</param>
-        /// <param name="lockTimeout">分布锁的过期时间(毫秒), 预防应用程序挂掉, 导至死锁</param>
-        public RedisBlock(ConnectionMultiplexer connection, int retryAddInterval = 100, int lockTimeout = 5000)
+        public RedisBlock(ConnectionMultiplexer connection, int retryAddInterval = 100)
         {
             this.Connection = connection ?? throw new ArgumentNullException(nameof(connection));
             this.RetryAddInterval = retryAddInterval;
-            this.LockTimeout = lockTimeout;
             this.subscriber = connection.GetSubscriber();
             this.db = connection.GetDatabase();
 
@@ -186,7 +183,8 @@ namespace AsNum.Throttle.Redis
                     var lockCountKey = this.ThrottleName.ToBlockCountKey();
                     var lockKey = this.ThrottleName.ToBlockLockKey();
 
-                    if (await db.LockTakeAsync(lockKey, this.ThrottleID, TimeSpan.FromMilliseconds(this.LockTimeout)))
+                    //if (await db.LockTakeAsync(lockKey, this.ThrottleID, TimeSpan.FromMilliseconds(this.LockTimeout)))
+                    if (await db.LockTakeAsync(lockKey, this.ThrottleID, this.LockTimeout ?? TimeSpan.FromSeconds(1)))
                     {
                         try
                         {
@@ -196,9 +194,9 @@ namespace AsNum.Throttle.Redis
 
                             //还可以塞多少个进来
                             var c = Math.Min(this.BoundedCapacity - n, this.bag.Count);
+                            //Console.WriteLine($"here {c}");
                             if (c > 0)
                             {
-
                                 var x = 0;
                                 for (var i = 0; i < c; i++)
                                 {

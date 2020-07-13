@@ -34,7 +34,7 @@ namespace AsNum.Throttle
         /// <summary>
         /// 避免因为客户端失去连接而引起的死锁
         /// </summary>
-        protected TimeSpan? BlockTimeout { get; private set; }
+        protected TimeSpan? LockTimeout { get; private set; }
 
 
         /// <summary>
@@ -55,14 +55,14 @@ namespace AsNum.Throttle
         /// <param name="throttleID"></param>
         /// <param name="boundedCapacity"></param>
         /// <param name="throttlePeriod"></param>
-        /// <param name="blockTimeout"></param>
-        internal void Setup(string throttleName, string throttleID, int boundedCapacity, TimeSpan throttlePeriod, TimeSpan? blockTimeout)
+        /// <param name="lockTimeout"></param>
+        internal void Setup(string throttleName, string throttleID, int boundedCapacity, TimeSpan throttlePeriod, TimeSpan? lockTimeout)
         {
             this.ThrottleName = throttleName;
             this.ThrottleID = throttleID;
             this.BoundedCapacity = boundedCapacity;
             this.ThrottlePeriod = throttlePeriod;
-            this.BlockTimeout = blockTimeout;
+            this.LockTimeout = lockTimeout;
 
             this.Initialize();
         }

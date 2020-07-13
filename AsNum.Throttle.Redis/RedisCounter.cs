@@ -28,7 +28,12 @@ namespace AsNum.Throttle.Redis
         /// <summary>
         /// 
         /// </summary>
-        public override int BatchCount => this._batchCount ?? Math.Max(this.BoundedCapacity / (int)(this.heart?.SubscriberCount ?? 1), 1);
+        public override int BatchCount => this._batchCount ?? Math.Max(this.BoundedCapacity / (int)(this.heart?.SubscriberCount ?? 1), 1); //Math.Max(this.BoundedCapacity / 2, 1);
+
+        /// <summary>
+        /// 
+        /// </summary>
+        public override int? Interval { get; }
 
         /// <summary>
         /// 
@@ -68,19 +73,27 @@ namespace AsNum.Throttle.Redis
         /// </summary>
         /// <param name="connection"></param>
         /// <param name="batchCount"></param>
+        /// <param name="interval"></param>
         /// <remarks>
         /// 在多进程下, 同时读取到的计数可能是相同的, 然后就会造成竞争, 从而会多出最多 N (N个进程) 个出来.
         /// </remarks>
-        public RedisCounter(ConnectionMultiplexer connection, int? batchCount = null)
+        public RedisCounter(ConnectionMultiplexer connection, int? batchCount = null, int interval = 10)
         {
             if (connection is null)
             {
                 throw new ArgumentNullException(nameof(connection));
             }
 
+            if (batchCount.HasValue && batchCount <= 0)
+                throw new ArgumentOutOfRangeException($"{nameof(BatchCount)} must greate than 0");
+
+            if (interval < 0)
+                throw new ArgumentOutOfRangeException($"{nameof(interval)} must greate than 0");
+
             this.db = connection.GetDatabase();
             this.subscriber = connection.GetSubscriber();
-            this._batchCount = batchCount;// batchCount ?? Math.Max(this.BoundedCapacity / (int)this.heart.SubscriberCount, 1);
+            this._batchCount = batchCount;
+            this.Interval = interval;
         }
 
 
@@ -148,7 +161,7 @@ namespace AsNum.Throttle.Redis
             var succ = false;
             if (this.heart.IsSingleClient || !this.lastPushSucc)
             {
-                succ = await this.db.LockTakeAsync(this.lockKey, this.ThrottleID, TimeSpan.FromSeconds(1));
+                succ = await this.db.LockTakeAsync(this.lockKey, this.ThrottleID, this.LockTimeout ?? TimeSpan.FromSeconds(1));
             }
 
             this.lastPushSucc = succ;

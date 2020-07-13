@@ -8,8 +8,10 @@
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <PackageTags>AsNum</PackageTags>
     <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
-    <PackageVersion>1.0.4.1-beta</PackageVersion>
-    <AssemblyVersion>1.0.4.1</AssemblyVersion>
+    <PackageVersion>1.0.4.6-beta</PackageVersion>
+    <AssemblyVersion>1.0.4.6</AssemblyVersion>
+    <FileVersion>1.0.4.6</FileVersion>
+    <Version>1.0.4.6</Version>
     <Authors>xling</Authors>
     <LangVersion>8.0</LangVersion>
     <DocumentationFile>bin\$(Configuration)\$(TargetFramework)\$(AssemblyName).xml</DocumentationFile>
@@ -17,8 +19,6 @@
     <PackageTags>throttle</PackageTags>
     <RepositoryUrl>https://github.com/gruan01/Throttle</RepositoryUrl>
     <PackageProjectUrl>https://github.com/gruan01/Throttle</PackageProjectUrl>
-    <FileVersion>1.0.4.1</FileVersion>
-    <Version>1.0.4</Version>
     <PackageReleaseNotes>RedisCounter require enable notify-keyspace-events Ex</PackageReleaseNotes>
   </PropertyGroup>
 

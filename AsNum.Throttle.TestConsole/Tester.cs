@@ -15,8 +15,8 @@ namespace AsNum.Throttle.CoreTest
     {
 
         private readonly BaseCounter Counter;
-        private readonly BaseBlock Block;
-        private readonly BasePerformanceCounter PerformanceCounter;
+        //private readonly BaseBlock Block;
+        //private readonly BasePerformanceCounter PerformanceCounter;
         private readonly Throttle TS;
         private readonly ConnectionMultiplexer Conn;
 
@@ -28,12 +28,14 @@ namespace AsNum.Throttle.CoreTest
         {
             this.Conn = ConnectionMultiplexer.Connect("localhost:6379");
 
-            this.Counter = new RedisCounter(this.Conn, 50);
+            this.Counter = new RedisCounter(this.Conn, 2);
             //this.Block = new CrossProcess.CrossProcessBlock();
-            this.Block = new RedisBlock(this.Conn);
-            this.PerformanceCounter = new ThrottlePerformanceCounter();
+            //this.Block = new RedisBlock(this.Conn);
+            //this.Block = new DefaultBlock();
+            //this.PerformanceCounter = new ThrottlePerformanceCounter();
 
-            this.TS = new Throttle("test", period, boundry, this.Block, this.Counter, this.PerformanceCounter);
+            //this.TS = new Throttle("test", period, boundry, this.Block, this.Counter, this.PerformanceCounter);
+            this.TS = new Throttle("test", period, boundry, this.Counter);
             //this.TS = new Throttle("test", period, boundry);
             this.TS.OnPeriodElapsed += Ts_OnPeriodElapsed;
         }
@@ -147,8 +149,8 @@ namespace AsNum.Throttle.CoreTest
                 if (flag)
                 {
                     this.Counter.Dispose();
-                    this.Block.Dispose();
-                    this.PerformanceCounter.Dispose();
+                    //this.Block.Dispose();
+                    //this.PerformanceCounter.Dispose();
                     this.Conn.Dispose();
                     Console.WriteLine("Tester Disposed");
                 }

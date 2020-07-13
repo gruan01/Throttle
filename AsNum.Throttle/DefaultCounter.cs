@@ -23,6 +23,12 @@ namespace AsNum.Throttle
 
 
         /// <summary>
+        /// 
+        /// </summary>
+        public override int? Interval { get; }
+
+
+        /// <summary>
         /// 用于 周期性的 重置计数
         /// </summary>
         private Timer timer;

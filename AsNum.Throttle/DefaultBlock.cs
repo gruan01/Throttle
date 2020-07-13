@@ -10,7 +10,7 @@ namespace AsNum.Throttle
     /// <summary>
     /// 用 BlockingCollection 实现的阻止队列. 不能跨进程
     /// </summary>
-    internal sealed class DefaultBlock : BaseBlock, IAutoDispose
+    public sealed class DefaultBlock : BaseBlock, IAutoDispose
     {
 
         /// <summary>
@@ -33,8 +33,8 @@ namespace AsNum.Throttle
         /// </summary>
         public override Task Acquire(string tag)
         {
-            if (this.BlockTimeout.HasValue)
-                this.block.TryAdd(0, this.BlockTimeout.Value);
+            if (this.LockTimeout.HasValue)
+                this.block.TryAdd(0, this.LockTimeout.Value);
             else
                 this.block.Add(0);
 
@@ -52,8 +52,8 @@ namespace AsNum.Throttle
         /// </summary>
         public override Task Release(string tag)
         {
-            if (this.BlockTimeout.HasValue)
-                this.block.TryTake(out _, this.BlockTimeout.Value);
+            if (this.LockTimeout.HasValue)
+                this.block.TryTake(out _, this.LockTimeout.Value);
             else
                 this.block.Take();
 
