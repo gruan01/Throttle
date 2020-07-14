@@ -48,6 +48,17 @@ namespace AsNum.Throttle
 
 
         /// <summary>
+        /// 
+        /// </summary>
+        private bool inProcess;
+
+        /// <summary>
+        /// 
+        /// </summary>
+        private readonly object lockObj = new object();
+
+
+        /// <summary>
         /// 任务队列
         /// </summary>
         private readonly ConcurrentQueue<Task> tsks = new ConcurrentQueue<Task>();
@@ -180,6 +191,7 @@ namespace AsNum.Throttle
         /// <param name="e"></param>
         private void Counter_OnReset(object sender, EventArgs e)
         {
+            this.ProcessQueue();
             this.OnPeriodElapsed?.Invoke(this, new PeriodElapsedEventArgs());
         }
 
@@ -245,6 +257,9 @@ namespace AsNum.Throttle
             this.tsks.Enqueue(task);
 
             this.performanceCounter?.IncrementQueue();
+
+            //尝试执行任务.因为初始状态下, 任务队列是空的, while 循环已退出.
+            this.ProcessQueue();
         }
 
 
@@ -254,61 +269,72 @@ namespace AsNum.Throttle
         /// </summary>
         private void ProcessQueue()
         {
+            if (this.inProcess)
+                return;
+
+            lock (lockObj)
+            {
+                if (this.inProcess)
+                    return;
+
+                this.inProcess = true;
+            }
+
             Task.Factory.StartNew(async () =>
             {
-                while (true)
+                while (!this.tsks.IsEmpty)
                 {
-                    if (this.tsks.Count > 0)
+                    try
                     {
-                        //var n = 0;
-                        if (await this.counter.TryLock())
+                        //当前计数
+                        var currCount = await this.counter.CurrentCount();
+                        if (currCount < this.MaxCountPerPeriod)
                         {
-                            try
+                            if (await this.counter.TryLock())
                             {
-                                //当前计数
-                                var currCount = await this.counter.CurrentCount();
-                                if (currCount < this.MaxCountPerPeriod)
+                                currCount = await this.counter.CurrentCount();
+                                //还有多少位置
+                                var space = Math.Max(this.MaxCountPerPeriod - currCount, 0);
+                                //可以插入几个
+                                var n = Math.Min(this.counter.BatchCount, space);
+
+                                var x = 0;
+                                for (var i = 0; i < n; i++)
                                 {
-                                    //还有多少位置
-                                    var space = Math.Max(this.MaxCountPerPeriod - currCount, 0);
-                                    //可以插入几个
-                                    var n = Math.Min(this.counter.BatchCount, space);
-
-                                    var x = 0;
-                                    for (var i = 0; i < n; i++)
+                                    if (tsks.TryDequeue(out Task tsk))
                                     {
-                                        if (tsks.TryDequeue(out Task tsk))
+                                        x++;
+                                        try
                                         {
-                                            x++;
-                                            try
-                                            {
-                                                tsk.Start();
-                                            }
-                                            catch (Exception e)
-                                            {
-                                                this.OnError?.Invoke(this, new ErrorEventArgs() { Ex = e });
-                                            }
+                                            tsk.Start();
                                         }
-                                        else
-                                            break;
+                                        catch (Exception e)
+                                        {
+                                            this.OnError?.Invoke(this, new ErrorEventArgs() { Ex = e });
+                                        }
                                     }
-
-                                    if (x > 0)
-                                        await this.counter.IncrementCount(n);
+                                    else
+                                        break;
                                 }
 
+                                if (x > 0)
+                                    await this.counter.IncrementCount(n);
                             }
-                            catch (Exception e)
-                            {
-                                this.OnError?.Invoke(this, new ErrorEventArgs() { Ex = e });
-                            }
-                            finally
-                            {
-                                await this.counter.ReleaseLock();
-                            }
+
                         }
                     }
+                    catch (Exception e)
+                    {
+                        this.OnError?.Invoke(this, new ErrorEventArgs() { Ex = e });
+                    }
+                    finally
+                    {
+                        await this.counter.ReleaseLock();
+                    }
                 }
+
+                this.inProcess = false;
+
             }, TaskCreationOptions.LongRunning | TaskCreationOptions.PreferFairness);
         }
 

@@ -50,12 +50,6 @@ namespace AsNum.Throttle
         /// </summary>
         public abstract int BatchCount { get; }
 
-
-        /// <summary>
-        /// 重试间隔, 用于减少 Redis 等第三方组件操作
-        /// </summary>
-        public abstract int? Interval { get; }
-
         /// <summary>
         /// 
         /// </summary>

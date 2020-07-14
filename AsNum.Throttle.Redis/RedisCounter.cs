@@ -20,25 +20,15 @@ namespace AsNum.Throttle.Redis
         private static readonly string KEY_EXPIRED_CHANNEL = "__keyevent@0__:expired";
 
 
-        ///// <summary>
-        ///// 
-        ///// </summary>
-        //private readonly int? _batchCount;
-
-        ///// <summary>
-        ///// 
-        ///// </summary>
-        //public override int BatchCount => this._batchCount ?? Math.Max(this.BoundedCapacity / (int)(this.heart?.SubscriberCount ?? 1), 1); //Math.Max(this.BoundedCapacity / 2, 1);
-
         /// <summary>
         /// 
         /// </summary>
         public override int BatchCount { get; }
 
         /// <summary>
-        /// 
+        /// 是否是单个客户端， 默认 false
         /// </summary>
-        public override int? Interval { get; }
+        public bool IsSingleClient { get; }
 
         /// <summary>
         /// 
@@ -61,45 +51,34 @@ namespace AsNum.Throttle.Redis
         /// </summary>
         private string lockKey;
 
-
-        /// <summary>
-        /// 
-        /// </summary>
-        //private Heart heart;
-
-
         ///// <summary>
         ///// 最后一次是不是该客户端获取了锁
         ///// </summary>
-        //private bool lastPushSucc = true;
+        //private bool lastLockSucc = false;
 
         /// <summary>
         /// 
         /// </summary>
         /// <param name="connection"></param>
         /// <param name="batchCount"></param>
-        /// <param name="interval"></param>
+        ///// <param name="isSingleClient">是否是单个客户端， 默认 false</param>
         /// <remarks>
         /// 在多进程下, 同时读取到的计数可能是相同的, 然后就会造成竞争, 从而会多出最多 N (N个进程) 个出来.
         /// </remarks>
-        public RedisCounter(ConnectionMultiplexer connection, int? batchCount = null, int interval = 10)
+        public RedisCounter(ConnectionMultiplexer connection, int batchCount = 1/*, bool isSingleClient = false*/)
         {
             if (connection is null)
             {
                 throw new ArgumentNullException(nameof(connection));
             }
 
-            if (batchCount.HasValue && batchCount <= 0)
+            if (batchCount <= 0)
                 throw new ArgumentOutOfRangeException($"{nameof(BatchCount)} must greate than 0");
-
-            if (interval < 0)
-                throw new ArgumentOutOfRangeException($"{nameof(interval)} must greate than 0");
 
             this.db = connection.GetDatabase();
             this.subscriber = connection.GetSubscriber();
-            //this._batchCount = batchCount;
-            this.BatchCount = batchCount ?? 1;
-            this.Interval = interval;
+            this.BatchCount = batchCount;
+            //this.IsSingleClient = isSingleClient;
         }
 
 
@@ -111,15 +90,13 @@ namespace AsNum.Throttle.Redis
             this.countKey = this.ThrottleName.ToCounterCountKey();
             this.lockKey = this.ThrottleName.ToCounterLockKey();
 
-            //this.heart = Heart.GetInstance(this.ThrottleName, this.subscriber);
-
             this.subscriber.Subscribe(KEY_EXPIRED_CHANNEL, (channel, value) =>
-           {
-               if (value == this.countKey)
-               {
-                   this.ResetFired();
-               }
-           });
+            {
+                if (value == this.countKey)
+                {
+                    this.ResetFired();
+                }
+            });
         }
 
 
@@ -141,7 +118,7 @@ namespace AsNum.Throttle.Redis
             try
             {
                 var n = (int)await this.db.StringIncrementAsync(this.countKey, a, flags: CommandFlags.DemandMaster);
-                if (n == a)
+                if (n == a || n <= 1)
                 {
                     //只有第一次时, 才对该值做 TTL
                     await db.KeyExpireAsync(this.countKey, this.ThrottlePeriod, CommandFlags.DemandMaster);
@@ -165,15 +142,12 @@ namespace AsNum.Throttle.Redis
         public override async ValueTask<bool> TryLock()
         {
             //var succ = false;
-            //if (this.heart.IsSingleClient || !this.lastPushSucc)
-            //{
-            //    succ = await this.db.LockTakeAsync(this.lockKey, this.ThrottleID, this.LockTimeout ?? TimeSpan.FromSeconds(1));
-            //}
-
-            //this.lastPushSucc = succ;
-            //return succ;
-
+            //if (this.IsSingleClient || !this.lastLockSucc)
             return await this.db.LockTakeAsync(this.lockKey, this.ThrottleID, this.LockTimeout ?? TimeSpan.FromSeconds(1));
+
+            //this.lastLockSucc = succ;
+
+            //return succ;
         }
 
 
