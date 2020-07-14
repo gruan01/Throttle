@@ -47,17 +47,6 @@ namespace AsNum.Throttle
         public TimeSpan Period { get; }
 
 
-        ///// <summary>
-        ///// 
-        ///// </summary>
-        //private bool inProcess;
-
-        ///// <summary>
-        ///// 
-        ///// </summary>
-        //private readonly object lockObj = new object();
-
-
         /// <summary>
         /// 任务队列
         /// </summary>
@@ -125,7 +114,7 @@ namespace AsNum.Throttle
 
 
             this.block = block ?? throw new ArgumentNullException(nameof(block));
-            this.block.Setup(throttleName, this.ThrottleID, maxCountPerPeriod * 2, period, lockTimeout);
+            this.block.Setup(throttleName, this.ThrottleID, maxCountPerPeriod, period, lockTimeout);
 
 
             this.counter = counter ?? throw new ArgumentNullException(nameof(counter));
@@ -271,6 +260,7 @@ namespace AsNum.Throttle
                 {
                     if (this.tsks.Count > 0)
                     {
+                        //var n = 0;
                         if (await this.counter.TryLock())
                         {
                             try
@@ -290,14 +280,21 @@ namespace AsNum.Throttle
                                         if (tsks.TryDequeue(out Task tsk))
                                         {
                                             x++;
-                                            tsk.Start();
+                                            try
+                                            {
+                                                tsk.Start();
+                                            }
+                                            catch (Exception e)
+                                            {
+                                                this.OnError?.Invoke(this, new ErrorEventArgs() { Ex = e });
+                                            }
                                         }
                                         else
                                             break;
                                     }
 
                                     if (x > 0)
-                                        await this.counter.IncrementCount(x);
+                                        await this.counter.IncrementCount(n);
                                 }
 
                             }
@@ -310,9 +307,6 @@ namespace AsNum.Throttle
                                 await this.counter.ReleaseLock();
                             }
                         }
-
-                        if (this.counter.Interval.HasValue)
-                            await Task.Delay(this.counter.Interval.Value);
                     }
                 }
             }, TaskCreationOptions.LongRunning | TaskCreationOptions.PreferFairness);

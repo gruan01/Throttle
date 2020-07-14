@@ -20,15 +20,20 @@ namespace AsNum.Throttle.Redis
         private static readonly string KEY_EXPIRED_CHANNEL = "__keyevent@0__:expired";
 
 
-        /// <summary>
-        /// 
-        /// </summary>
-        private readonly int? _batchCount;
+        ///// <summary>
+        ///// 
+        ///// </summary>
+        //private readonly int? _batchCount;
+
+        ///// <summary>
+        ///// 
+        ///// </summary>
+        //public override int BatchCount => this._batchCount ?? Math.Max(this.BoundedCapacity / (int)(this.heart?.SubscriberCount ?? 1), 1); //Math.Max(this.BoundedCapacity / 2, 1);
 
         /// <summary>
         /// 
         /// </summary>
-        public override int BatchCount => this._batchCount ?? Math.Max(this.BoundedCapacity / (int)(this.heart?.SubscriberCount ?? 1), 1); //Math.Max(this.BoundedCapacity / 2, 1);
+        public override int BatchCount { get; }
 
         /// <summary>
         /// 
@@ -60,13 +65,13 @@ namespace AsNum.Throttle.Redis
         /// <summary>
         /// 
         /// </summary>
-        private Heart heart;
+        //private Heart heart;
 
 
-        /// <summary>
-        /// 最后一次是不是该客户端获取了锁
-        /// </summary>
-        private bool lastPushSucc = true;
+        ///// <summary>
+        ///// 最后一次是不是该客户端获取了锁
+        ///// </summary>
+        //private bool lastPushSucc = true;
 
         /// <summary>
         /// 
@@ -92,7 +97,8 @@ namespace AsNum.Throttle.Redis
 
             this.db = connection.GetDatabase();
             this.subscriber = connection.GetSubscriber();
-            this._batchCount = batchCount;
+            //this._batchCount = batchCount;
+            this.BatchCount = batchCount ?? 1;
             this.Interval = interval;
         }
 
@@ -105,7 +111,7 @@ namespace AsNum.Throttle.Redis
             this.countKey = this.ThrottleName.ToCounterCountKey();
             this.lockKey = this.ThrottleName.ToCounterLockKey();
 
-            this.heart = Heart.GetInstance(this.ThrottleName, this.subscriber);
+            //this.heart = Heart.GetInstance(this.ThrottleName, this.subscriber);
 
             this.subscriber.Subscribe(KEY_EXPIRED_CHANNEL, (channel, value) =>
            {
@@ -158,14 +164,16 @@ namespace AsNum.Throttle.Redis
         /// <returns></returns>
         public override async ValueTask<bool> TryLock()
         {
-            var succ = false;
-            if (this.heart.IsSingleClient || !this.lastPushSucc)
-            {
-                succ = await this.db.LockTakeAsync(this.lockKey, this.ThrottleID, this.LockTimeout ?? TimeSpan.FromSeconds(1));
-            }
+            //var succ = false;
+            //if (this.heart.IsSingleClient || !this.lastPushSucc)
+            //{
+            //    succ = await this.db.LockTakeAsync(this.lockKey, this.ThrottleID, this.LockTimeout ?? TimeSpan.FromSeconds(1));
+            //}
 
-            this.lastPushSucc = succ;
-            return succ;
+            //this.lastPushSucc = succ;
+            //return succ;
+
+            return await this.db.LockTakeAsync(this.lockKey, this.ThrottleID, this.LockTimeout ?? TimeSpan.FromSeconds(1));
         }
 
 

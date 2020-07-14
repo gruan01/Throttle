@@ -12,6 +12,7 @@ namespace AsNum.Throttle.Redis
     /// <summary>
     /// 
     /// </summary>
+    [Obsolete]
     public class Heart
     {
 
@@ -125,7 +126,7 @@ namespace AsNum.Throttle.Redis
             {
                 this.initialized = true;
                 this.subscriber = subscriber;
-                this.subscriber.Ping();
+                //this.subscriber.Ping();
 
                 this.subscriber.Subscribe(this.HeartChannel, (c, v) => { });
                 this.Start();
