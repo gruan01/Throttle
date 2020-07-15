@@ -1,5 +1,4 @@
 ﻿using AsNum.Throttle.Redis;
-using AsNum.Throttle.Statistic;
 using StackExchange.Redis;
 using System;
 using System.Collections.Generic;
@@ -28,14 +27,14 @@ namespace AsNum.Throttle.CoreTest
         {
             this.Conn = ConnectionMultiplexer.Connect("localhost:6379");
 
-            this.Counter = new RedisCounter(this.Conn, 2);
+            this.Counter = new RedisCounter(this.Conn, 5);
             //this.Block = new CrossProcess.CrossProcessBlock();
             //this.Block = new RedisBlock(this.Conn);
             //this.Block = new DefaultBlock();
             //this.PerformanceCounter = new ThrottlePerformanceCounter();
 
             //this.TS = new Throttle("test", period, boundry, this.Block, this.Counter, this.PerformanceCounter);
-            this.TS = new Throttle("test", period, boundry, this.Counter);
+            this.TS = new Throttle("test", period, boundry, this.Counter, concurrentCount: 2);
             //this.TS = new Throttle("test", period, boundry);
             this.TS.OnPeriodElapsed += Ts_OnPeriodElapsed;
         }

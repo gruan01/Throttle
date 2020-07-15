@@ -79,13 +79,18 @@ namespace AsNum.Throttle
         private readonly BaseCounter counter;
 
 
-        /// <summary>
-        /// 性能计数器
-        /// </summary>
-        private readonly BasePerformanceCounter performanceCounter;
+        ///// <summary>
+        ///// 性能计数器
+        ///// </summary>
+        //private readonly BasePerformanceCounter performanceCounter;
 
         #endregion
 
+
+        /// <summary>
+        /// 
+        /// </summary>
+        private readonly SemaphoreSlim semaphoreSlim = null;
 
         /// <summary>
         /// 
@@ -94,16 +99,17 @@ namespace AsNum.Throttle
         /// <param name="maxCountPerPeriod">周期内最大允许执行次数</param>
         /// <param name="block"></param>
         /// <param name="counter"></param>
-        /// <param name="performanceCounter"></param>
         /// <param name="lockTimeout">避免因为客户端失去连接而引起的死锁</param>
+        /// <param name="concurrentCount">并发数</param>
         /// <param name="throttleName">应该是一个唯一的字符串</param>
         public Throttle(string throttleName,
                         TimeSpan period,
                         int maxCountPerPeriod,
                         BaseBlock block,
                         BaseCounter counter,
-                        BasePerformanceCounter performanceCounter = null,
-                        TimeSpan? lockTimeout = null)
+                        TimeSpan? lockTimeout = null,
+                        int? concurrentCount = null
+                        )
         {
             if (string.IsNullOrWhiteSpace(throttleName))
             {
@@ -115,6 +121,12 @@ namespace AsNum.Throttle
 
             if (maxCountPerPeriod <= 0)
                 throw new ArgumentException($"{nameof(maxCountPerPeriod)} 无效");
+
+            if (concurrentCount.HasValue && concurrentCount <= 0)
+                throw new ArgumentException($"{nameof(concurrentCount)} 无效");
+
+            if (concurrentCount.HasValue)
+                this.semaphoreSlim = new SemaphoreSlim(concurrentCount.Value, concurrentCount.Value);
 
             this.ThrottleName = throttleName;
             this.ThrottleID = Guid.NewGuid().ToString();
@@ -131,11 +143,6 @@ namespace AsNum.Throttle
             this.counter = counter ?? throw new ArgumentNullException(nameof(counter));
             this.counter.SetUp(throttleName, this.ThrottleID, maxCountPerPeriod, period, lockTimeout);
             this.counter.OnReset += Counter_OnReset;
-
-            this.performanceCounter = performanceCounter;
-            this.performanceCounter?.SetUp(throttleName);
-
-            this.ProcessQueue();
         }
 
 
@@ -146,21 +153,23 @@ namespace AsNum.Throttle
         /// <param name="period"></param>
         /// <param name="maxCountPerPeriod"></param>
         /// <param name="counter"></param>
-        /// <param name="performanceCounter"></param>
         /// <param name="blockTimeout"></param>
+        /// <param name="concurrentCount"></param>
         public Throttle(string throttleName,
                         TimeSpan period,
                         int maxCountPerPeriod,
                         BaseCounter counter,
-                        BasePerformanceCounter performanceCounter = null,
-                        TimeSpan? blockTimeout = null)
+                        TimeSpan? blockTimeout = null,
+                        int? concurrentCount = null
+                        )
             : this(throttleName,
                   period,
                   maxCountPerPeriod,
                   new DefaultBlock(),
                   counter,
-                  performanceCounter,
-                  blockTimeout)
+                  blockTimeout,
+                  concurrentCount
+                  )
         {
         }
 
@@ -171,18 +180,25 @@ namespace AsNum.Throttle
         /// <param name="period"></param>
         /// <param name="maxCountPerPeriod"></param>
         /// <param name="blockTimeout"></param>
+        /// <param name="concurrentCount"></param>
         /// <param name="throttleName">应该是一个唯一的字符串</param>
-        public Throttle(string throttleName, TimeSpan period, int maxCountPerPeriod, TimeSpan? blockTimeout = null)
-            : this(
+        public Throttle(string throttleName,
+            TimeSpan period,
+            int maxCountPerPeriod,
+            TimeSpan? blockTimeout = null,
+            int? concurrentCount = null) : this(
                   throttleName,
                   period,
                   maxCountPerPeriod,
                   new DefaultBlock(),
                   new DefaultCounter(),
-                  lockTimeout: blockTimeout
+                  blockTimeout,
+                  concurrentCount
                   )
         {
         }
+
+
 
         /// <summary>
         /// 
@@ -221,7 +237,7 @@ namespace AsNum.Throttle
                 {
                     //当任务执行完时, 才能阻止队列的一个空间出来,供下一个任务进入
                     await this.block.Release(tag);
-                    this.performanceCounter?.DecrementQueue();
+                    //this.performanceCounter?.DecrementQueue();
                 }
                 catch (Exception e)
                 {
@@ -256,7 +272,7 @@ namespace AsNum.Throttle
             //占用一个空间后, 才能将任务插入队列
             this.tsks.Enqueue(task);
 
-            this.performanceCounter?.IncrementQueue();
+            //this.performanceCounter?.IncrementQueue();
 
             //尝试执行任务.因为初始状态下, 任务队列是空的, while 循环已退出.
             this.ProcessQueue();
@@ -292,7 +308,7 @@ namespace AsNum.Throttle
                         {
                             if (await this.counter.TryLock())
                             {
-                                currCount = await this.counter.CurrentCount();
+                                // currCount = await this.counter.CurrentCount();
                                 //还有多少位置
                                 var space = Math.Max(this.MaxCountPerPeriod - currCount, 0);
                                 //可以插入几个
@@ -319,6 +335,8 @@ namespace AsNum.Throttle
 
                                 if (x > 0)
                                     await this.counter.IncrementCount(n);
+
+                                await this.counter.ReleaseLock();
                             }
 
                         }
@@ -326,10 +344,6 @@ namespace AsNum.Throttle
                     catch (Exception e)
                     {
                         this.OnError?.Invoke(this, new ErrorEventArgs() { Ex = e });
-                    }
-                    finally
-                    {
-                        await this.counter.ReleaseLock();
                     }
                 }
 
@@ -339,6 +353,118 @@ namespace AsNum.Throttle
         }
 
         #region execute
+
+
+        #region Wrap
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="org"></param>
+        /// <returns></returns>
+        private Func<object, T> Wrap<T>(Func<object, T> org)
+        {
+            if (this.semaphoreSlim != null)
+            {
+                return (o) =>
+                {
+                    try
+                    {
+                        this.semaphoreSlim.WaitAsync();
+                        return org.Invoke(o);
+                    }
+                    finally
+                    {
+                        this.semaphoreSlim.Release();
+                    }
+                };
+            }
+            else
+                return org;
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="org"></param>
+        /// <returns></returns>
+        private Func<T> Wrap<T>(Func<T> org)
+        {
+            if (this.semaphoreSlim != null)
+            {
+                return () =>
+                {
+                    try
+                    {
+                        this.semaphoreSlim.WaitAsync();
+                        return org.Invoke();
+                    }
+                    finally
+                    {
+                        this.semaphoreSlim.Release();
+                    }
+                };
+            }
+            else
+                return org;
+        }
+
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="org"></param>
+        /// <returns></returns>
+        private Action Wrap(Action org)
+        {
+            if (this.semaphoreSlim != null)
+            {
+                return () =>
+                {
+                    try
+                    {
+                        this.semaphoreSlim.WaitAsync();
+                        org.Invoke();
+                    }
+                    finally
+                    {
+                        this.semaphoreSlim.Release();
+                    }
+                };
+            }
+            else
+                return org;
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="org"></param>
+        /// <returns></returns>
+        private Action<T> Wrap<T>(Action<T> org)
+        {
+            if (this.semaphoreSlim != null)
+            {
+                return (o) =>
+                {
+                    try
+                    {
+                        this.semaphoreSlim.WaitAsync();
+                        org.Invoke(o);
+                    }
+                    finally
+                    {
+                        this.semaphoreSlim.Release();
+                    }
+                };
+            }
+            else
+                return org;
+        }
+        #endregion
+
 
         #region Func<T> / Func<object, T>
         /// <summary>
@@ -351,7 +477,7 @@ namespace AsNum.Throttle
         /// <returns></returns>
         public async Task<T> Execute<T>(Func<T> func, CancellationToken cancellation = default, TaskCreationOptions creationOptions = TaskCreationOptions.None)
         {
-            var t = new Task<T>(func, cancellation, creationOptions);
+            var t = new Task<T>(this.Wrap(func), cancellation, creationOptions);
             await this.Enqueue(t);
             return await t;
         }
@@ -367,7 +493,7 @@ namespace AsNum.Throttle
         /// <returns></returns>
         public async Task<T> Execute<T>(Func<object, T> func, object state, CancellationToken cancellation = default, TaskCreationOptions creationOptions = TaskCreationOptions.None)
         {
-            var t = new Task<T>(func, state, cancellation, creationOptions);
+            var t = new Task<T>(this.Wrap(func), state, cancellation, creationOptions);
             await this.Enqueue(t);
             return await t;
         }
@@ -385,7 +511,7 @@ namespace AsNum.Throttle
         /// <returns></returns>
         public async Task<T> Execute<T>(Func<Task<T>> func, CancellationToken cancellation = default, TaskCreationOptions creationOptions = TaskCreationOptions.None)
         {
-            var t = new WrapFuncTask<T>(func, cancellation, creationOptions);
+            var t = new WrapFuncTask<T>(this.Wrap(func), cancellation, creationOptions);
             await this.Enqueue(t);
             return await t.Result;
         }
@@ -402,7 +528,7 @@ namespace AsNum.Throttle
         /// <returns></returns>
         public async Task<T> Execute<T>(Func<object, Task<T>> func, object state, CancellationToken cancellation = default, TaskCreationOptions creationOptions = TaskCreationOptions.None)
         {
-            var t = new WrapFuncTask<T>(func, state, cancellation, creationOptions);
+            var t = new WrapFuncTask<T>(this.Wrap(func), state, cancellation, creationOptions);
             await this.Enqueue(t);
             return await t.Result;
         }
@@ -419,7 +545,7 @@ namespace AsNum.Throttle
         /// <returns></returns>
         public async Task Execute(Action act, CancellationToken cancellation = default, TaskCreationOptions creationOptions = TaskCreationOptions.None)
         {
-            var t = new Task(act, cancellation, creationOptions);
+            var t = new Task(this.Wrap(act), cancellation, creationOptions);
             await this.Enqueue(t);
             await t;
         }
@@ -434,7 +560,7 @@ namespace AsNum.Throttle
         /// <returns></returns>
         public async Task Execute<T>(Action<object> act, object state, CancellationToken cancellation = default, TaskCreationOptions creationOptions = TaskCreationOptions.None)
         {
-            var t = new Task(act, state, cancellation, creationOptions);
+            var t = new Task(this.Wrap(act), state, cancellation, creationOptions);
             await this.Enqueue(t);
             await t;
         }
@@ -484,6 +610,8 @@ namespace AsNum.Throttle
                     {
                         this.counter.Dispose();
                     }
+
+                    this.semaphoreSlim?.Dispose();
                 }
                 isDisposed = true;
             }

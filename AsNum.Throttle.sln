@@ -15,7 +15,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AsNum.Throttle.Statistic", 
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AsNum.Throttle.TestConsole", "AsNum.Throttle.TestConsole\AsNum.Throttle.TestConsole.csproj", "{FC6ACF72-E33F-478B-A723-DBC631CD50A7}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AsNum.Throttle.Performance", "AsNum.Throttle.Performance\AsNum.Throttle.Performance.csproj", "{7D6436BD-2DE2-4526-95FD-87331EB1658F}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AsNum.Throttle.Performance", "AsNum.Throttle.Performance\AsNum.Throttle.Performance.csproj", "{7D6436BD-2DE2-4526-95FD-87331EB1658F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AsNum.Throttle.TestConsole462", "AsNum.Throttle.TestConsole462\AsNum.Throttle.TestConsole462.csproj", "{4878DF50-EE9B-4A41-837E-8A71862D1097}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -51,6 +53,10 @@ Global
 		{7D6436BD-2DE2-4526-95FD-87331EB1658F}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{7D6436BD-2DE2-4526-95FD-87331EB1658F}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{7D6436BD-2DE2-4526-95FD-87331EB1658F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4878DF50-EE9B-4A41-837E-8A71862D1097}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4878DF50-EE9B-4A41-837E-8A71862D1097}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4878DF50-EE9B-4A41-837E-8A71862D1097}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4878DF50-EE9B-4A41-837E-8A71862D1097}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

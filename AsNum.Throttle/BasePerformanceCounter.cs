@@ -7,6 +7,7 @@ namespace AsNum.Throttle
     /// <summary>
     /// 
     /// </summary>
+    [Obsolete]
     public abstract class BasePerformanceCounter : IDisposable
     {
 

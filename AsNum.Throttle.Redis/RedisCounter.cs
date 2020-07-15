@@ -106,7 +106,7 @@ namespace AsNum.Throttle.Redis
         /// <returns></returns>
         public override async ValueTask<int> CurrentCount()
         {
-            return await this.db.StringGetIntAsync(this.countKey, flags: CommandFlags.DemandMaster);
+            return await this.db.StringGetIntAsync(this.countKey);
         }
 
         /// <summary>
@@ -143,11 +143,13 @@ namespace AsNum.Throttle.Redis
         {
             //var succ = false;
             //if (this.IsSingleClient || !this.lastLockSucc)
-            return await this.db.LockTakeAsync(this.lockKey, this.ThrottleID, this.LockTimeout ?? TimeSpan.FromSeconds(1));
+            //    succ = await this.db.LockTakeAsync(this.lockKey, this.ThrottleID, this.LockTimeout ?? TimeSpan.FromSeconds(1));
 
             //this.lastLockSucc = succ;
 
             //return succ;
+
+            return await this.db.LockTakeAsync(this.lockKey, this.ThrottleID, this.LockTimeout ?? TimeSpan.FromSeconds(1));
         }
 
 

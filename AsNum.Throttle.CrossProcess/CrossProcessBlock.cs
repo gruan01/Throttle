@@ -37,7 +37,7 @@ namespace AsNum.Throttle.CrossProcess
                 this.semaphore.WaitOne(this.LockTimeout.Value);
             else
                 this.semaphore.WaitOne();
-
+            
 #if !NET451
             return Task.CompletedTask;
 #else

@@ -12,25 +12,25 @@ namespace AsNum.Throttle.Redis
     /// </summary>
     public static class Extensions
     {
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <param name="db"></param>
-        /// <param name="key"></param>
-        /// <param name="defaultValue"></param>
-        /// <param name="flags"></param>
-        /// <returns></returns>
-        public static int StringGetInt(this IDatabase db, RedisKey key, int defaultValue = default, CommandFlags flags = CommandFlags.None)
-        {
-            var v = db.StringGet(key, flags);
-            if (v != RedisValue.Null)
-            {
-                if (v.TryParse(out int vv))
-                    return vv;
-            }
+        ///// <summary>
+        ///// 
+        ///// </summary>
+        ///// <param name="db"></param>
+        ///// <param name="key"></param>
+        ///// <param name="defaultValue"></param>
+        ///// <param name="flags"></param>
+        ///// <returns></returns>
+        //public static int StringGetInt(this IDatabase db, RedisKey key, int defaultValue = default, CommandFlags flags = CommandFlags.None)
+        //{
+        //    var v = db.StringGet(key, flags);
+        //    if (v.HasValue)
+        //    {
+        //        if (v.TryParse(out int vv))
+        //            return vv;
+        //    }
 
-            return defaultValue;
-        }
+        //    return defaultValue;
+        //}
 
 #if !NET451
         /// <summary>
@@ -44,10 +44,18 @@ namespace AsNum.Throttle.Redis
         public static async ValueTask<int> StringGetIntAsync(this IDatabase db, RedisKey key, int defaultValue = default, CommandFlags flags = CommandFlags.None)
         {
             var v = await db.StringGetAsync(key, flags);
-            if (v != RedisValue.Null)
+            if (!v.IsNull)
             {
-                if (v.TryParse(out int vv))
-                    return vv;
+                //if (v.TryParse(out int vv))
+                //    return vv;
+                try
+                {
+                    return (int)v;
+                }
+                catch
+                {
+
+                }
             }
 
             return defaultValue;
@@ -64,10 +72,18 @@ namespace AsNum.Throttle.Redis
         public static async Task<int> StringGetIntAsync(this IDatabase db, RedisKey key, int defaultValue = default, CommandFlags flags = CommandFlags.None)
         {
             var v = await db.StringGetAsync(key, flags);
-            if (v != RedisValue.Null)
+            if (!v.IsNull)
             {
-                if (v.TryParse(out int vv))
-                    return vv;
+                //if (v.TryParse(out int vv))
+                //    return vv;
+                try
+                {
+                    return (int)v;
+                }
+                catch
+                {
+
+                }
             }
 
             return defaultValue;
@@ -115,6 +131,9 @@ namespace AsNum.Throttle.Redis
         {
             return $"{throttleName}:counter:count";
         }
+
+
+
 
 
         /// <summary>
