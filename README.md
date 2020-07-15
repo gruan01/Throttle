@@ -22,9 +22,9 @@ this.TS = new Throttle("ThrottleName", TimeSpan.FromSeconds(1), 10, this.Block, 
 
 
 ### Cross Server 
-Nolonger available, use DefaultBlock instead.
+**Nolonger available, use DefaultBlock instead.**
 ~~~
-~~this.Block = new RedisBlock(conn);~~
+this.Block = new RedisBlock(conn);
 ~~~
 
 ### NUGET
@@ -34,4 +34,4 @@ Nolonger available, use DefaultBlock instead.
 
 [AsNum.Throttle.Redis](https://www.nuget.org/packages/AsNum.Throttle.Redis/)
 
-[AsNum.Throttle.Statistic](https://www.nuget.org/packages/AsNum.Throttle.Statistic/) Nolonger available
+[AsNum.Throttle.Statistic](https://www.nuget.org/packages/AsNum.Throttle.Statistic/) **Nolonger available**
