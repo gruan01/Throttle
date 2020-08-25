@@ -51,6 +51,12 @@ namespace AsNum.Throttle.Redis
         /// </summary>
         private string lockKey;
 
+        /// <summary>
+        /// 
+        /// </summary>
+        private TTLCheck TTLCheck { get; }
+
+
         ///// <summary>
         ///// 最后一次是不是该客户端获取了锁
         ///// </summary>
@@ -79,6 +85,8 @@ namespace AsNum.Throttle.Redis
             this.subscriber = connection.GetSubscriber();
             this.BatchCount = batchCount;
             //this.IsSingleClient = isSingleClient;
+
+            this.TTLCheck = new TTLCheck(this.db);
         }
 
 
@@ -97,6 +105,8 @@ namespace AsNum.Throttle.Redis
                     this.ResetFired();
                 }
             });
+
+            this.TTLCheck.Check(this.countKey);
         }
 
 

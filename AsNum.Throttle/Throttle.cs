@@ -334,7 +334,7 @@ namespace AsNum.Throttle
                                 }
 
                                 if (x > 0)
-                                    await this.counter.IncrementCount(n);
+                                    await this.counter.IncrementCount(x);
 
                                 await this.counter.ReleaseLock();
                             }

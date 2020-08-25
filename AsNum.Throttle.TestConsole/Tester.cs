@@ -89,7 +89,7 @@ namespace AsNum.Throttle.CoreTest
             //await Task.Delay(TimeSpan.FromSeconds(6));
             await Task.Delay(TimeSpan.FromSeconds(1));
             //Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff}\tAA:{i}");
+            //Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff}\tAA:{i}");
             //Console.ResetColor();
         }
 
