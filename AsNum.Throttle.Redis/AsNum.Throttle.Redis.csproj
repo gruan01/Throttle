@@ -8,7 +8,7 @@
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <PackageTags>AsNum</PackageTags>
     <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
-    <PackageVersion>1.0.4.15-beta</PackageVersion>
+    <PackageVersion>1.0.4.15</PackageVersion>
     <AssemblyVersion>1.0.4.15</AssemblyVersion>
     <FileVersion>1.0.4.15</FileVersion>
     <Version>1.0.4.15</Version>

@@ -51,10 +51,10 @@ namespace AsNum.Throttle.Redis
         /// </summary>
         private string lockKey;
 
-        /// <summary>
-        /// 
-        /// </summary>
-        private TTLCheck TTLCheck { get; }
+        ///// <summary>
+        ///// 
+        ///// </summary>
+        //private TTLCheck TTLCheck { get; }
 
 
         ///// <summary>
@@ -86,7 +86,7 @@ namespace AsNum.Throttle.Redis
             this.BatchCount = batchCount;
             //this.IsSingleClient = isSingleClient;
 
-            this.TTLCheck = new TTLCheck(this.db);
+            //this.TTLCheck = new TTLCheck(this.db);
         }
 
 
@@ -106,7 +106,7 @@ namespace AsNum.Throttle.Redis
                 }
             });
 
-            this.TTLCheck.Check(this.countKey);
+            //this.TTLCheck.Check(this.countKey);
         }
 
 
@@ -125,6 +125,8 @@ namespace AsNum.Throttle.Redis
         /// <returns></returns>
         public override async ValueTask<int> IncrementCount(int a)
         {
+            //没有找到原因, TTL 总是有 -1 的情况...
+            await this.CheckTTL();
             try
             {
                 var n = (int)await this.db.StringIncrementAsync(this.countKey, a, flags: CommandFlags.DemandMaster);
@@ -143,6 +145,25 @@ namespace AsNum.Throttle.Redis
             }
         }
 
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <returns></returns>
+        private async Task CheckTTL()
+        {
+            try
+            {
+                var t = await this.db.KeyTimeToLiveAsync(this.countKey, CommandFlags.DemandMaster);
+                if (t == null)
+                {
+                    await this.db.KeyDeleteAsync(this.countKey, CommandFlags.DemandMaster);
+                }
+            }
+            catch (Exception e)
+            {
+            }
+        }
 
 
         /// <summary>

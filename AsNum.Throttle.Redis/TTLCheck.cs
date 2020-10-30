@@ -9,6 +9,7 @@ namespace AsNum.Throttle.Redis
     /// <summary>
     /// 
     /// </summary>
+    [Obsolete("直接移到 RedisCounter 里去了")]
     public class TTLCheck
     {
         /// <summary>
@@ -35,7 +36,7 @@ namespace AsNum.Throttle.Redis
                 while (true)
                 {
                     var t = await this.db.KeyTimeToLiveAsync(key, CommandFlags.DemandMaster);
-                    Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff}\t{t}");
+                    //Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff}\t{t}");
                     if (t == null)
                     {
                         await this.db.KeyDeleteAsync(key, CommandFlags.DemandMaster);
