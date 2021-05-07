@@ -608,6 +608,7 @@ namespace AsNum.Throttle
 
                     if (this.counter != null && this.counter is IAutoDispose)
                     {
+                        this.counter.OnReset -= Counter_OnReset;
                         this.counter.Dispose();
                     }
 

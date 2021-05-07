@@ -7,6 +7,7 @@ namespace AsNum.Throttle.CrossProcess
     /// <summary>
     /// 使用 Semaphore 实现 跨进程的 Block
     /// </summary>
+    [Obsolete]
     public class CrossProcessBlock : BaseBlock
     {
         /// <summary>
@@ -37,7 +38,7 @@ namespace AsNum.Throttle.CrossProcess
                 this.semaphore.WaitOne(this.LockTimeout.Value);
             else
                 this.semaphore.WaitOne();
-            
+
 #if !NET451
             return Task.CompletedTask;
 #else
