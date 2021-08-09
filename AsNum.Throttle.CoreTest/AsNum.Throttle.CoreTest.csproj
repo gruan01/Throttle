@@ -15,9 +15,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\AsNum.Throttle.CrossProcess\AsNum.Throttle.CrossProcess.csproj" />
     <ProjectReference Include="..\AsNum.Throttle.Redis\AsNum.Throttle.Redis.csproj" />
-    <ProjectReference Include="..\AsNum.Throttle.Statistic\AsNum.Throttle.Statistic.csproj" />
     <ProjectReference Include="..\AsNum.Throttle\AsNum.Throttle.csproj" />
   </ItemGroup>
 

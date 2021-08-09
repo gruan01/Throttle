@@ -14,8 +14,6 @@ namespace AsNum.Throttle.CoreTest
     {
 
         private readonly BaseCounter Counter;
-        //private readonly BaseBlock Block;
-        //private readonly BasePerformanceCounter PerformanceCounter;
         private readonly Throttle TS;
         private readonly ConnectionMultiplexer Conn;
 
@@ -23,17 +21,11 @@ namespace AsNum.Throttle.CoreTest
         /// 
         /// </summary>
         /// <param name="n"></param>
-        public Tester(int boundry, TimeSpan period)
+        public Tester(int boundry, TimeSpan period, int batchCount)
         {
             this.Conn = ConnectionMultiplexer.Connect("localhost:6379");
 
-            this.Counter = new RedisCounter(this.Conn, 5);
-            //this.Block = new CrossProcess.CrossProcessBlock();
-            //this.Block = new RedisBlock(this.Conn);
-            //this.Block = new DefaultBlock();
-            //this.PerformanceCounter = new ThrottlePerformanceCounter();
-
-            //this.TS = new Throttle("test", period, boundry, this.Block, this.Counter, this.PerformanceCounter);
+            this.Counter = new RedisCounter(this.Conn, batchCount);
             this.TS = new Throttle("test", period, boundry, this.Counter, concurrentCount: 2);
             //this.TS = new Throttle("test", period, boundry);
             this.TS.OnPeriodElapsed += Ts_OnPeriodElapsed;
@@ -89,7 +81,7 @@ namespace AsNum.Throttle.CoreTest
             //await Task.Delay(TimeSpan.FromSeconds(6));
             await Task.Delay(TimeSpan.FromSeconds(1));
             //Console.ForegroundColor = ConsoleColor.Red;
-            //Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff}\tAA:{i}");
+            Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff}\tAA:{i}");
             //Console.ResetColor();
         }
 

@@ -7,10 +7,10 @@
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
     <PackageTags>AsNum</PackageTags>
     <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
-    <PackageVersion>1.0.4.16</PackageVersion>
-    <AssemblyVersion>1.0.4.16</AssemblyVersion>
-    <FileVersion>1.0.4.16</FileVersion>
-    <Version>1.0.4.16</Version>
+    <PackageVersion>1.0.4.17</PackageVersion>
+    <AssemblyVersion>1.0.4.17</AssemblyVersion>
+    <FileVersion>1.0.4.17</FileVersion>
+    <Version>1.0.4.17</Version>
     <Authors>xling</Authors>
     <LangVersion>8.0</LangVersion>
     <Description>Action / Func throttle in a period</Description>
@@ -18,6 +18,12 @@
     <RepositoryUrl>https://github.com/gruan01/Throttle</RepositoryUrl>
     <PackageProjectUrl>https://github.com/gruan01/Throttle</PackageProjectUrl>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="packages\**" />
+    <EmbeddedResource Remove="packages\**" />
+    <None Remove="packages\**" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="System.Threading.Tasks.Extensions" Version="4.5.4" />

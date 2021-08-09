@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Text;
-using System.Threading;
+﻿using System.Collections.Concurrent;
 using System.Threading.Tasks;
 
 namespace AsNum.Throttle
@@ -38,11 +34,7 @@ namespace AsNum.Throttle
             else
                 this.block.Add(0);
 
-#if !NET451
             return Task.CompletedTask;
-#else
-            return Task.FromResult(true);
-#endif
         }
 
 
@@ -57,11 +49,7 @@ namespace AsNum.Throttle
             else
                 this.block.Take();
 
-#if !NET451
             return Task.CompletedTask;
-#else
-            return Task.FromResult(true);
-#endif
         }
 
 

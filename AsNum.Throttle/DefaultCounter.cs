@@ -82,11 +82,7 @@ namespace AsNum.Throttle
         /// <returns></returns>
         public override Task ReleaseLock()
         {
-#if !NET451
             return Task.CompletedTask;
-#else
-            return Task.FromResult(true);
-#endif
         }
 
 

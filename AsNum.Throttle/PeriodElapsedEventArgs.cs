@@ -9,10 +9,6 @@ namespace AsNum.Throttle
     /// </summary>
     public class PeriodElapsedEventArgs : EventArgs
     {
-        ///// <summary>
-        ///// 
-        ///// </summary>
-        //public ThrottleStatistic Statistic { get; set; }
     }
 
 }

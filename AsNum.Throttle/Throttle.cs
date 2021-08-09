@@ -1,10 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
-using System.Diagnostics;
-using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Timers;
 namespace AsNum.Throttle
 {
     /// <summary>
@@ -78,17 +75,11 @@ namespace AsNum.Throttle
         /// </summary>
         private readonly BaseCounter counter;
 
-
-        ///// <summary>
-        ///// 性能计数器
-        ///// </summary>
-        //private readonly BasePerformanceCounter performanceCounter;
-
         #endregion
 
 
         /// <summary>
-        /// 
+        /// 用于控制并发数
         /// </summary>
         private readonly SemaphoreSlim semaphoreSlim = null;
 
@@ -101,7 +92,7 @@ namespace AsNum.Throttle
         /// <param name="counter"></param>
         /// <param name="lockTimeout">避免因为客户端失去连接而引起的死锁</param>
         /// <param name="concurrentCount">并发数</param>
-        /// <param name="throttleName">应该是一个唯一的字符串</param>
+        /// <param name="throttleName">应该是一个唯一的字符串, 这个参数做为 Redis 的 key 的一部份, 因此要符合 redis key 的规则</param>
         public Throttle(string throttleName,
                         TimeSpan period,
                         int maxCountPerPeriod,
@@ -112,9 +103,7 @@ namespace AsNum.Throttle
                         )
         {
             if (string.IsNullOrWhiteSpace(throttleName))
-            {
-                throw new ArgumentException("message", nameof(throttleName));
-            }
+                throw new ArgumentException($"{nameof(throttleName)} 必填");
 
             if (period <= TimeSpan.Zero)
                 throw new ArgumentException($"{nameof(period)} 无效");
@@ -149,7 +138,7 @@ namespace AsNum.Throttle
         /// <summary>
         /// 
         /// </summary>
-        /// <param name="throttleName"></param>
+        /// <param name="throttleName">应该是一个唯一的字符串, 这个参数做为 Redis 的 key 的一部份, 因此要符合 redis key 的规则</param>
         /// <param name="period"></param>
         /// <param name="maxCountPerPeriod"></param>
         /// <param name="counter"></param>
@@ -181,7 +170,7 @@ namespace AsNum.Throttle
         /// <param name="maxCountPerPeriod"></param>
         /// <param name="blockTimeout"></param>
         /// <param name="concurrentCount"></param>
-        /// <param name="throttleName">应该是一个唯一的字符串</param>
+        /// <param name="throttleName">应该是一个唯一的字符串, 这个参数做为 Redis 的 key 的一部份, 因此要符合 redis key 的规则</param>
         public Throttle(string throttleName,
             TimeSpan period,
             int maxCountPerPeriod,
@@ -237,7 +226,6 @@ namespace AsNum.Throttle
                 {
                     //当任务执行完时, 才能阻止队列的一个空间出来,供下一个任务进入
                     await this.block.Release(tag);
-                    //this.performanceCounter?.DecrementQueue();
                 }
                 catch (Exception e)
                 {
@@ -272,7 +260,6 @@ namespace AsNum.Throttle
             //占用一个空间后, 才能将任务插入队列
             this.tsks.Enqueue(task);
 
-            //this.performanceCounter?.IncrementQueue();
 
             //尝试执行任务.因为初始状态下, 任务队列是空的, while 循环已退出.
             this.ProcessQueue();
@@ -298,19 +285,39 @@ namespace AsNum.Throttle
 
             Task.Factory.StartNew(async () =>
             {
-                while (!this.tsks.IsEmpty)
+                await this.RunLoop();
+                this.inProcess = false;
+            }, TaskCreationOptions.LongRunning | TaskCreationOptions.PreferFairness);
+        }
+
+
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <returns></returns>
+        private async Task RunLoop()
+        {
+            while (!this.tsks.IsEmpty)
+            {
+                await this.counter.WaitMoment();
+
+                try
                 {
-                    try
+                    //先锁, 在获取计数,
+                    //如果先获取计数, 在锁, 会造成超频的情况.
+                    if (await this.counter.TryLock())
                     {
                         //当前计数
                         var currCount = await this.counter.CurrentCount();
                         if (currCount < this.MaxCountPerPeriod)
                         {
-                            if (await this.counter.TryLock())
+                            //if (await this.counter.TryLock())
                             {
-                                // currCount = await this.counter.CurrentCount();
+
                                 //还有多少位置
                                 var space = Math.Max(this.MaxCountPerPeriod - currCount, 0);
+
                                 //可以插入几个
                                 var n = Math.Min(this.counter.BatchCount, space);
 
@@ -336,20 +343,20 @@ namespace AsNum.Throttle
                                 if (x > 0)
                                     await this.counter.IncrementCount(x);
 
-                                await this.counter.ReleaseLock();
+                                //await this.counter.ReleaseLock();
                             }
-
                         }
                     }
-                    catch (Exception e)
-                    {
-                        this.OnError?.Invoke(this, new ErrorEventArgs() { Ex = e });
-                    }
                 }
-
-                this.inProcess = false;
-
-            }, TaskCreationOptions.LongRunning | TaskCreationOptions.PreferFairness);
+                catch (Exception e)
+                {
+                    this.OnError?.Invoke(this, new ErrorEventArgs() { Ex = e });
+                }
+                finally
+                {
+                    await this.counter.ReleaseLock();
+                }
+            }
         }
 
         #region execute

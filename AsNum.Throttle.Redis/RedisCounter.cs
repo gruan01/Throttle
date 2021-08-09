@@ -1,7 +1,6 @@
-﻿using StackExchange.Redis;
-using System;
-using System.Diagnostics;
+﻿using System;
 using System.Threading.Tasks;
+using StackExchange.Redis;
 
 namespace AsNum.Throttle.Redis
 {
@@ -9,7 +8,8 @@ namespace AsNum.Throttle.Redis
     /// 
     /// </summary>
     /// <remarks>
-    /// 确保 Redis 的 notify-keyspace-events 中开启了 Ex
+    /// 确保 Redis 的 notify-keyspace-events 中开启了 Ex: 
+    /// config set notify-keyspace-events Ex
     /// </remarks>
     public class RedisCounter : BaseCounter
     {
@@ -21,14 +21,10 @@ namespace AsNum.Throttle.Redis
 
 
         /// <summary>
-        /// 
+        /// 批量占用数,用于减少 Redis 等第三方组件的操作.
         /// </summary>
         public override int BatchCount { get; }
 
-        /// <summary>
-        /// 是否是单个客户端， 默认 false
-        /// </summary>
-        public bool IsSingleClient { get; }
 
         /// <summary>
         /// 
@@ -51,32 +47,16 @@ namespace AsNum.Throttle.Redis
         /// </summary>
         private string lockKey;
 
-        ///// <summary>
-        ///// 
-        ///// </summary>
-        //private TTLCheck TTLCheck { get; }
-
-
-        ///// <summary>
-        ///// 最后一次是不是该客户端获取了锁
-        ///// </summary>
-        //private bool lastLockSucc = false;
 
         /// <summary>
         /// 
         /// </summary>
         /// <param name="connection"></param>
-        /// <param name="batchCount"></param>
-        ///// <param name="isSingleClient">是否是单个客户端， 默认 false</param>
-        /// <remarks>
-        /// 在多进程下, 同时读取到的计数可能是相同的, 然后就会造成竞争, 从而会多出最多 N (N个进程) 个出来.
-        /// </remarks>
-        public RedisCounter(ConnectionMultiplexer connection, int batchCount = 1/*, bool isSingleClient = false*/)
+        /// <param name="batchCount">批大小; 为保证公平, 这个数字越小越好; 但是为了减少与 Redis 之间的通讯, 这个值越大越好.</param>
+        public RedisCounter(ConnectionMultiplexer connection, int batchCount = 1)
         {
-            if (connection is null)
-            {
+            if (connection == null)
                 throw new ArgumentNullException(nameof(connection));
-            }
 
             if (batchCount <= 0)
                 throw new ArgumentOutOfRangeException($"{nameof(BatchCount)} must greate than 0");
@@ -84,11 +64,26 @@ namespace AsNum.Throttle.Redis
             this.db = connection.GetDatabase();
             this.subscriber = connection.GetSubscriber();
             this.BatchCount = batchCount;
-            //this.IsSingleClient = isSingleClient;
-
-            //this.TTLCheck = new TTLCheck(this.db);
         }
 
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <remarks>
+        /// 即然用到了限频, 而且用到了 RedisCounter 说明是多进程同时在运行, 频率一定不会太高,
+        /// 所以随机等待对请求速度影响不大.
+        /// 
+        /// 为了兼容老的版本, 新加了这个构造函数.
+        /// </remarks>
+        /// <param name="connection"></param>
+        /// <param name="batchCount">批大小; 为保证公平, 这个数字越小越好; 但是为了减少与 Redis 之间的通讯, 这个值越大越好.</param>
+        /// <param name="rndSleepInMS">用于随机等待, 如果不等待, 太消耗CPU.</param>
+        public RedisCounter(ConnectionMultiplexer connection, int batchCount = 1, int? rndSleepInMS = 5)
+            : this(connection, batchCount)
+        {
+            this.rndSleepInMS = rndSleepInMS;
+        }
 
         /// <summary>
         /// 
@@ -105,8 +100,35 @@ namespace AsNum.Throttle.Redis
                     this.ResetFired();
                 }
             });
+        }
 
-            //this.TTLCheck.Check(this.countKey);
+
+
+        /// <summary>
+        /// 
+        /// </summary>
+        private static readonly Random rnd = new Random();
+
+
+        /// <summary>
+        /// 用于随机等待, 如果不等待, 太消耗CPU.
+        /// 即然用到了限频, 而且用到了 RedisCounter 说明是多进程同时在运行, 频率一定不会太高,
+        /// 所以随机等待对请求速度影响不大.
+        /// </summary>
+        private readonly int? rndSleepInMS = 5;
+
+        /// <summary>
+        /// 随机待待0~2 毫秒, 拯救CPU
+        /// </summary>
+        /// <returns></returns>
+        public override async Task WaitMoment()
+        {
+            if (this.rndSleepInMS > 0)
+            {
+                var t = rnd.Next(0, this.rndSleepInMS.Value);
+                if (t > 0)
+                    await Task.Delay(t);
+            }
         }
 
 
@@ -116,7 +138,7 @@ namespace AsNum.Throttle.Redis
         /// <returns></returns>
         public override async ValueTask<int> CurrentCount()
         {
-            return await this.db.StringGetIntAsync(this.countKey);
+            return await this.db.StringGetIntAsync(this.countKey, 0, CommandFlags.DemandMaster);
         }
 
         /// <summary>
@@ -139,9 +161,8 @@ namespace AsNum.Throttle.Redis
             }
             catch
             {
-                await this.db.StringSetAsync(this.countKey, a, flags: CommandFlags.DemandMaster);
-                await db.KeyExpireAsync(this.countKey, this.ThrottlePeriod, flags: CommandFlags.DemandMaster);
-                return 0;
+                await this.db.StringSetAsync(this.countKey, a, this.ThrottlePeriod, flags: CommandFlags.DemandMaster);
+                return a;
             }
         }
 
@@ -160,7 +181,7 @@ namespace AsNum.Throttle.Redis
                     await this.db.KeyDeleteAsync(this.countKey, CommandFlags.DemandMaster);
                 }
             }
-            catch (Exception e)
+            catch
             {
             }
         }
@@ -172,15 +193,7 @@ namespace AsNum.Throttle.Redis
         /// <returns></returns>
         public override async ValueTask<bool> TryLock()
         {
-            //var succ = false;
-            //if (this.IsSingleClient || !this.lastLockSucc)
-            //    succ = await this.db.LockTakeAsync(this.lockKey, this.ThrottleID, this.LockTimeout ?? TimeSpan.FromSeconds(1));
-
-            //this.lastLockSucc = succ;
-
-            //return succ;
-
-            return await this.db.LockTakeAsync(this.lockKey, this.ThrottleID, this.LockTimeout ?? TimeSpan.FromSeconds(1));
+            return await this.db.LockTakeAsync(this.lockKey, this.ThrottleID, this.LockTimeout ?? TimeSpan.FromSeconds(1), CommandFlags.DemandMaster);
         }
 
 
@@ -190,7 +203,7 @@ namespace AsNum.Throttle.Redis
         /// <returns></returns>
         public override async Task ReleaseLock()
         {
-            await this.db.LockReleaseAsync(this.lockKey, this.ThrottleID);
+            await this.db.LockReleaseAsync(this.lockKey, this.ThrottleID, CommandFlags.DemandMaster);
         }
 
 

@@ -76,6 +76,16 @@ namespace AsNum.Throttle
         /// <returns></returns>
         public abstract Task ReleaseLock();
 
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <returns></returns>
+        public virtual Task WaitMoment()
+        {
+            return Task.CompletedTask;
+        }
+
         /// <summary>
         /// 
         /// </summary>
