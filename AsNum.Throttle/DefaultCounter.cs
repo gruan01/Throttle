@@ -27,6 +27,13 @@ namespace AsNum.Throttle
         /// </summary>
         private Timer timer;
 
+        /// <summary>
+        /// 
+        /// </summary>
+        private int avg = 0;
+
+
+        private readonly Random rnd = new Random();
 
         /// <summary>
         /// 
@@ -34,6 +41,11 @@ namespace AsNum.Throttle
         protected override void Initialize()
         {
             this.timer = new Timer(new TimerCallback(Timer_Elapsed), null, TimeSpan.Zero, this.ThrottlePeriod);
+            //一般如果是限制执行频率的， 频率根本不会太大。
+            //如果不暂停的话， 会一直执行循环，导致 CPU 空转浪费。
+            //假设1秒钟允许执行60次，合16毫秒执行一次，
+            //如果加上暂停，应该是 1 秒钟内 60次执行，60次暂停， 合 8 毫秒一次。
+            this.avg = (int)this.ThrottlePeriod.TotalMilliseconds / this.BoundedCapacity / 2;
         }
 
         /// <summary>
@@ -43,6 +55,23 @@ namespace AsNum.Throttle
         {
             Interlocked.Exchange(ref this._currentCount, 0);
             this.ResetFired();
+        }
+
+
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <returns></returns>
+        public override async Task WaitMoment()
+        {
+            if (this.avg > 1)
+            {
+                var n = rnd.Next(0, this.avg);
+                if (n > 0)
+                    await Task.Delay(n);
+            }
+
         }
 
 
