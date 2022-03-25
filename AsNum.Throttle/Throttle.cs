@@ -329,7 +329,9 @@ namespace AsNum.Throttle
                                         x++;
                                         try
                                         {
-                                            tsk.Start();
+                                            //被取消的任务,不能在 start
+                                            if (!tsk.IsCanceled && !tsk.IsCompleted)
+                                                tsk.Start();
                                         }
                                         catch (Exception e)
                                         {
