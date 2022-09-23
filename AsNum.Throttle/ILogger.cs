@@ -1,19 +1,19 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace AsNum.Throttle
 {
     /// <summary>
     /// 
     /// </summary>
-    public class ErrorEventArgs : EventArgs
+    public interface ILogger
     {
 
         /// <summary>
         /// 
         /// </summary>
-        public Exception Ex { get; set; }
+        /// <param name="message"></param>
+        /// <param name="e"></param>
+        void Log(string message, Exception e);
 
     }
 }

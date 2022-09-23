@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -13,7 +14,7 @@ namespace AsNum.Throttle
         /// <summary>
         /// 
         /// </summary>
-        private int _currentCount;
+        private volatile int _currentCount;
 
 
         /// <summary>
@@ -38,15 +39,26 @@ namespace AsNum.Throttle
         /// <summary>
         /// 
         /// </summary>
-        protected override void Initialize()
+        protected override void Initialize(bool firstLoad)
         {
-            this.timer = new Timer(new TimerCallback(Timer_Elapsed), null, TimeSpan.Zero, this.ThrottlePeriod);
+            if (this.timer != null)
+            {
+                //TimeSpan.Zero 会立即执行 TimerCallback, 换成 Timeout.InfiniteTimeSpan 后, TimerCallback 又不执行了...
+                //this.timer.Change(TimeSpan.Zero, this.Period);
+                //this.timer.Change(Timeout.InfiniteTimeSpan, this.Period);
+
+                this.timer.Change(this.Period, this.Period);
+            }
+            else
+                this.timer = new Timer(new TimerCallback(Timer_Elapsed), null, this.Period, this.Period);
+
             //一般如果是限制执行频率的， 频率根本不会太大。
             //如果不暂停的话， 会一直执行循环，导致 CPU 空转浪费。
             //假设1秒钟允许执行60次，合16毫秒执行一次，
             //如果加上暂停，应该是 1 秒钟内 60次执行，60次暂停， 合 8 毫秒一次。
-            this.avg = (int)this.ThrottlePeriod.TotalMilliseconds / this.BoundedCapacity / 2;
+            this.avg = (int)this.Period.TotalMilliseconds / this.Frequency / 2;
         }
+
 
         /// <summary>
         /// 

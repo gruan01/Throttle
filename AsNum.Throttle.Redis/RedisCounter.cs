@@ -53,53 +53,40 @@ namespace AsNum.Throttle.Redis
         /// </summary>
         /// <param name="connection"></param>
         /// <param name="batchCount">批大小; 为保证公平, 这个数字越小越好; 但是为了减少与 Redis 之间的通讯, 这个值越大越好.</param>
-        public RedisCounter(ConnectionMultiplexer connection, int batchCount = 1)
+        /// /// <param name="rndSleepInMS">用于随机等待, 如果不等待, 太消耗CPU.</param>
+        public RedisCounter(ConnectionMultiplexer connection, int batchCount = 1, int? rndSleepInMS = 5)
         {
             if (connection == null)
                 throw new ArgumentNullException(nameof(connection));
 
             if (batchCount <= 0)
-                throw new ArgumentOutOfRangeException($"{nameof(BatchCount)} must greate than 0");
+                throw new ArgumentOutOfRangeException($"{nameof(batchCount)} must greate than 0");
 
             this.db = connection.GetDatabase();
             this.subscriber = connection.GetSubscriber();
             this.BatchCount = batchCount;
-        }
-
-
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <remarks>
-        /// 即然用到了限频, 而且用到了 RedisCounter 说明是多进程同时在运行, 频率一定不会太高,
-        /// 所以随机等待对请求速度影响不大.
-        /// 
-        /// 为了兼容老的版本, 新加了这个构造函数.
-        /// </remarks>
-        /// <param name="connection"></param>
-        /// <param name="batchCount">批大小; 为保证公平, 这个数字越小越好; 但是为了减少与 Redis 之间的通讯, 这个值越大越好.</param>
-        /// <param name="rndSleepInMS">用于随机等待, 如果不等待, 太消耗CPU.</param>
-        public RedisCounter(ConnectionMultiplexer connection, int batchCount = 1, int? rndSleepInMS = 5)
-            : this(connection, batchCount)
-        {
             this.rndSleepInMS = rndSleepInMS;
         }
 
+
         /// <summary>
         /// 
         /// </summary>
-        protected override void Initialize()
+        protected override void Initialize(bool firstLoad)
         {
-            this.countKey = this.ThrottleName.ToCounterCountKey();
-            this.lockKey = this.ThrottleName.ToCounterLockKey();
-
-            this.subscriber.Subscribe(KEY_EXPIRED_CHANNEL, (channel, value) =>
+            if (firstLoad)
             {
-                if (value == this.countKey)
+                this.countKey = this.ThrottleName.ToCounterCountKey();
+                this.lockKey = this.ThrottleName.ToCounterLockKey();
+
+                this.subscriber.Subscribe(KEY_EXPIRED_CHANNEL, (channel, value) =>
                 {
-                    this.ResetFired();
-                }
-            });
+                    if (value == this.countKey)
+                    {
+                        this.ResetFired();
+                    }
+                });
+            }
         }
 
 
@@ -138,7 +125,7 @@ namespace AsNum.Throttle.Redis
         /// <returns></returns>
         public override async ValueTask<int> CurrentCount()
         {
-            return await this.db.StringGetIntAsync(this.countKey, 0, CommandFlags.DemandMaster);
+            return await this.db.StringGetAsync(this.countKey, CommandFlags.DemandMaster).ToInt(0);
         }
 
         /// <summary>
@@ -155,13 +142,13 @@ namespace AsNum.Throttle.Redis
                 if (n == a || n <= 1)
                 {
                     //只有第一次时, 才对该值做 TTL
-                    await db.KeyExpireAsync(this.countKey, this.ThrottlePeriod, CommandFlags.DemandMaster);
+                    await db.KeyExpireAsync(this.countKey, this.Period, CommandFlags.DemandMaster);
                 }
                 return n;
             }
             catch
             {
-                await this.db.StringSetAsync(this.countKey, a, this.ThrottlePeriod, flags: CommandFlags.DemandMaster);
+                await this.db.StringSetAsync(this.countKey, a, this.Period, flags: CommandFlags.DemandMaster);
                 return a;
             }
         }

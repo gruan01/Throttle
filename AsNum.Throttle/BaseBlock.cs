@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace AsNum.Throttle
@@ -8,69 +6,66 @@ namespace AsNum.Throttle
     /// <summary>
     /// 
     /// </summary>
-    public abstract class BaseBlock : IDisposable
+    public abstract class BaseBlock : IUpdate, IDisposable
     {
-
         /// <summary>
         /// 
         /// </summary>
-        protected string ThrottleName { get; private set; }
-
-        /// <summary>
-        /// 
-        /// </summary>
-        protected string ThrottleID { get; private set; }
-
-        /// <summary>
-        /// 
-        /// </summary>
-        protected int BoundedCapacity { get; private set; }
-
-        /// <summary>
-        /// 
-        /// </summary>
-        protected TimeSpan ThrottlePeriod { get; private set; }
+        public int Frequency { get; private set; }
 
         /// <summary>
         /// 避免因为客户端失去连接而引起的死锁
         /// </summary>
-        protected TimeSpan? LockTimeout { get; private set; }
+        public TimeSpan? LockTimeout { get; private set; }
 
 
         /// <summary>
         /// 尝试占用一个位置
         /// </summary>
-        public abstract Task Acquire(string tag);
+        internal abstract Task Acquire(string tag);
 
         /// <summary>
         /// 释放一个位置
         /// </summary>
-        public abstract Task Release(string tag);
+        internal abstract Task Release(string tag);
 
 
         /// <summary>
         /// 
         /// </summary>
-        /// <param name="throttleName"></param>
-        /// <param name="throttleID"></param>
-        /// <param name="boundedCapacity"></param>
-        /// <param name="throttlePeriod"></param>
+        /// <param name="frequency"></param>
         /// <param name="lockTimeout"></param>
-        internal void Setup(string throttleName, string throttleID, int boundedCapacity, TimeSpan throttlePeriod, TimeSpan? lockTimeout)
+        internal void Setup(int frequency, TimeSpan? lockTimeout)
         {
-            this.ThrottleName = throttleName;
-            this.ThrottleID = throttleID;
-            this.BoundedCapacity = boundedCapacity;
-            this.ThrottlePeriod = throttlePeriod;
+            this.Frequency = frequency;
             this.LockTimeout = lockTimeout;
 
-            this.Initialize();
+            this.Initialize(true);
+        }
+
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="period"></param>
+        /// <param name="frequency"></param>
+        Task IUpdate.Update(TimeSpan period, int frequency)
+        {
+            //值不一致时， 才重新 Initialize
+            if (this.Frequency != frequency)
+            {
+                this.Frequency = frequency;
+                this.Initialize(false);
+            }
+
+            return Task.CompletedTask;
         }
 
         /// <summary>
         /// 初始化
         /// </summary>
-        protected abstract void Initialize();
+        /// <param name="firstLoad">是否是第一次初始化；如果为 false 则是通过配置更新器重新初始化的</param>
+        protected abstract void Initialize(bool firstLoad);
 
 
         /// <summary>

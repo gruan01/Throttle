@@ -16,32 +16,15 @@ namespace AsNum.Throttle
         /// </summary>
         public event EventHandler<PeriodElapsedEventArgs> OnPeriodElapsed;
 
-        /// <summary>
-        /// 
-        /// </summary>
-        public event EventHandler<ErrorEventArgs> OnError;
+        ///// <summary>
+        ///// 
+        ///// </summary>
+        //public event EventHandler<MsgEventArgs> OnMessage;
 
         /// <summary>
         /// 当前 ThrottleID 的 ID, 随机分配.
         /// </summary>
-        public string ThrottleID { get; }
-
-        /// <summary>
-        /// 
-        /// </summary>
-        public string ThrottleName { get; }
-
-
-        /// <summary>
-        /// 每个周期内,允许多少次调用
-        /// </summary>
-        public int MaxCountPerPeriod { get; }
-
-
-        /// <summary>
-        /// 周期
-        /// </summary>
-        public TimeSpan Period { get; }
+        private readonly string ThrottleID;
 
 
         /// <summary>
@@ -66,16 +49,26 @@ namespace AsNum.Throttle
 
         #region 核心
         /// <summary>
-        /// 
+        /// 阻塞器
         /// </summary>
-        private readonly BaseBlock block;
+        public BaseBlock Blocker { get; }
 
         /// <summary>
         /// 计数器
         /// </summary>
-        private readonly BaseCounter counter;
+        public BaseCounter Counter { get; }
+
+        /// <summary>
+        /// 配置更新器
+        /// </summary>
+        public BaseCfgUpdater Updater { get; }
 
         #endregion
+
+        /// <summary>
+        /// 
+        /// </summary>
+        private readonly ILogger logger;
 
 
         /// <summary>
@@ -87,17 +80,21 @@ namespace AsNum.Throttle
         /// 
         /// </summary>
         /// <param name="period">周期</param>
-        /// <param name="maxCountPerPeriod">周期内最大允许执行次数</param>
+        /// <param name="frequency">周期内最大允许执行次数</param>
         /// <param name="block"></param>
         /// <param name="counter"></param>
         /// <param name="lockTimeout">避免因为客户端失去连接而引起的死锁</param>
         /// <param name="concurrentCount">并发数</param>
+        /// <param name="logger"></param>
+        /// <param name="updater">用于更新周期/频率</param>
         /// <param name="throttleName">应该是一个唯一的字符串, 这个参数做为 Redis 的 key 的一部份, 因此要符合 redis key 的规则</param>
         public Throttle(string throttleName,
                         TimeSpan period,
-                        int maxCountPerPeriod,
-                        BaseBlock block,
-                        BaseCounter counter,
+                        int frequency,
+                        BaseBlock block = null,
+                        BaseCounter counter = null,
+                        BaseCfgUpdater updater = null,
+                        ILogger logger = null,
                         TimeSpan? lockTimeout = null,
                         int? concurrentCount = null
                         )
@@ -108,8 +105,8 @@ namespace AsNum.Throttle
             if (period <= TimeSpan.Zero)
                 throw new ArgumentException($"{nameof(period)} 无效");
 
-            if (maxCountPerPeriod <= 0)
-                throw new ArgumentException($"{nameof(maxCountPerPeriod)} 无效");
+            if (frequency <= 0)
+                throw new ArgumentException($"{nameof(frequency)} 无效");
 
             if (concurrentCount.HasValue && concurrentCount <= 0)
                 throw new ArgumentException($"{nameof(concurrentCount)} 无效");
@@ -117,75 +114,24 @@ namespace AsNum.Throttle
             if (concurrentCount.HasValue)
                 this.semaphoreSlim = new SemaphoreSlim(concurrentCount.Value, concurrentCount.Value);
 
-            this.ThrottleName = throttleName;
-            this.ThrottleID = Guid.NewGuid().ToString();
+            this.ThrottleID = Guid.NewGuid().ToString("N");
+
+            this.logger = logger ?? new DefaultleLogger();
+
+            this.Blocker = block ?? new DefaultBlock();
+            this.Blocker.Setup(frequency, lockTimeout);
 
 
-            this.MaxCountPerPeriod = maxCountPerPeriod;
-            this.Period = period;
+            this.Counter = counter ?? new DefaultCounter();
+            this.Counter.SetUp(throttleName, this.ThrottleID, frequency, period, lockTimeout);
+            this.Counter.OnReset += Counter_OnReset;
 
-
-            this.block = block ?? throw new ArgumentNullException(nameof(block));
-            this.block.Setup(throttleName, this.ThrottleID, maxCountPerPeriod, period, lockTimeout);
-
-
-            this.counter = counter ?? throw new ArgumentNullException(nameof(counter));
-            this.counter.SetUp(throttleName, this.ThrottleID, maxCountPerPeriod, period, lockTimeout);
-            this.counter.OnReset += Counter_OnReset;
+            this.Updater = updater ?? new DefaultCfgUpater();
+            this.Updater.Subscribe(this.Counter);
+            this.Updater.Subscribe(this.Blocker);
+            this.Updater.SetUp(throttleName, this.ThrottleID, period, frequency, logger);
         }
 
-
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <param name="throttleName">应该是一个唯一的字符串, 这个参数做为 Redis 的 key 的一部份, 因此要符合 redis key 的规则</param>
-        /// <param name="period"></param>
-        /// <param name="maxCountPerPeriod"></param>
-        /// <param name="counter"></param>
-        /// <param name="blockTimeout"></param>
-        /// <param name="concurrentCount"></param>
-        public Throttle(string throttleName,
-                        TimeSpan period,
-                        int maxCountPerPeriod,
-                        BaseCounter counter,
-                        TimeSpan? blockTimeout = null,
-                        int? concurrentCount = null
-                        )
-            : this(throttleName,
-                  period,
-                  maxCountPerPeriod,
-                  new DefaultBlock(),
-                  counter,
-                  blockTimeout,
-                  concurrentCount
-                  )
-        {
-        }
-
-
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <param name="period"></param>
-        /// <param name="maxCountPerPeriod"></param>
-        /// <param name="blockTimeout"></param>
-        /// <param name="concurrentCount"></param>
-        /// <param name="throttleName">应该是一个唯一的字符串, 这个参数做为 Redis 的 key 的一部份, 因此要符合 redis key 的规则</param>
-        public Throttle(string throttleName,
-            TimeSpan period,
-            int maxCountPerPeriod,
-            TimeSpan? blockTimeout = null,
-            int? concurrentCount = null) : this(
-                  throttleName,
-                  period,
-                  maxCountPerPeriod,
-                  new DefaultBlock(),
-                  new DefaultCounter(),
-                  blockTimeout,
-                  concurrentCount
-                  )
-        {
-        }
 
 
 
@@ -199,6 +145,7 @@ namespace AsNum.Throttle
             this.ProcessQueue();
             this.OnPeriodElapsed?.Invoke(this, new PeriodElapsedEventArgs());
         }
+
 
         /// <summary>
         /// 
@@ -225,11 +172,12 @@ namespace AsNum.Throttle
                 try
                 {
                     //当任务执行完时, 才能阻止队列的一个空间出来,供下一个任务进入
-                    await this.block.Release(tag);
+                    await this.Blocker.Release(tag);
                 }
                 catch (Exception e)
                 {
-                    this.OnError?.Invoke(this, new ErrorEventArgs() { Ex = e });
+                    //this.OnMessage?.Invoke(this, new MsgEventArgs() { Ex = e });
+                    this.logger.Log(null, e);
                 }
             });
         }
@@ -250,11 +198,12 @@ namespace AsNum.Throttle
             try
             {
                 //占用一个空间, 如果空间占满, 会无限期等待,直至有空间释放出来
-                await this.block.Acquire(tag);
+                await this.Blocker.Acquire(tag);
             }
             catch (Exception e)
             {
-                this.OnError?.Invoke(this, new ErrorEventArgs() { Ex = e });
+                //this.OnMessage?.Invoke(this, new MsgEventArgs() { Ex = e });
+                this.logger?.Log(null, e);
             }
 
             //占用一个空间后, 才能将任务插入队列
@@ -300,26 +249,26 @@ namespace AsNum.Throttle
         {
             while (!this.tsks.IsEmpty)
             {
-                await this.counter.WaitMoment();
+                await this.Counter.WaitMoment();
 
                 try
                 {
                     //先锁, 在获取计数,
                     //如果先获取计数, 在锁, 会造成超频的情况.
-                    if (await this.counter.TryLock())
+                    if (await this.Counter.TryLock())
                     {
                         //当前计数
-                        var currCount = await this.counter.CurrentCount();
-                        if (currCount < this.MaxCountPerPeriod)
+                        var currCount = await this.Counter.CurrentCount();
+                        if (currCount < this.Counter.Frequency)
                         {
                             //if (await this.counter.TryLock())
                             {
 
                                 //还有多少位置
-                                var space = Math.Max(this.MaxCountPerPeriod - currCount, 0);
+                                var space = Math.Max(this.Counter.Frequency - currCount, 0);
 
                                 //可以插入几个
-                                var n = Math.Min(this.counter.BatchCount, space);
+                                var n = Math.Min(this.Counter.BatchCount, space);
 
                                 var x = 0;
                                 for (var i = 0; i < n; i++)
@@ -335,7 +284,8 @@ namespace AsNum.Throttle
                                         }
                                         catch (Exception e)
                                         {
-                                            this.OnError?.Invoke(this, new ErrorEventArgs() { Ex = e });
+                                            //this.OnMessage?.Invoke(this, new MsgEventArgs() { Ex = e });
+                                            this.logger.Log(null, e);
                                         }
                                     }
                                     else
@@ -343,7 +293,7 @@ namespace AsNum.Throttle
                                 }
 
                                 if (x > 0)
-                                    await this.counter.IncrementCount(x);
+                                    await this.Counter.IncrementCount(x);
 
                                 //await this.counter.ReleaseLock();
                             }
@@ -352,11 +302,12 @@ namespace AsNum.Throttle
                 }
                 catch (Exception e)
                 {
-                    this.OnError?.Invoke(this, new ErrorEventArgs() { Ex = e });
+                    //this.OnMessage?.Invoke(this, new MsgEventArgs() { Ex = e });
+                    this.logger.Log(null, e);
                 }
                 finally
                 {
-                    await this.counter.ReleaseLock();
+                    await this.Counter.ReleaseLock();
                 }
             }
         }
@@ -579,6 +530,44 @@ namespace AsNum.Throttle
         #endregion
 
 
+
+        #region Select
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <returns></returns>
+        public async Task<bool> Select()
+        {
+            try
+            {
+                await this.Counter.TryLock();
+                //当前计数
+                var currCount = await this.Counter.CurrentCount();
+                var flag = currCount < this.Counter.Frequency;
+                if (flag)
+                {
+                    await this.Counter.IncrementCount(1);
+                }
+                return flag;
+            }
+            catch (Exception e)
+            {
+                //this.OnMessage?.Invoke(this, new MsgEventArgs() { Ex = e });
+                this.logger.Log(null, e);
+            }
+            finally
+            {
+                await this.Counter.ReleaseLock();
+            }
+
+            return true;
+        }
+
+        #endregion
+
+
+
         #region dispose
         /// <summary>
         /// 
@@ -610,16 +599,21 @@ namespace AsNum.Throttle
             {
                 if (flag)
                 {
-                    if (this.block != null && this.block is IAutoDispose)
+                    if (this.Blocker != null && this.Blocker is IAutoDispose)
                     {
-                        this.block.Dispose();
+                        this.Blocker.Dispose();
                     }
 
-                    if (this.counter != null && this.counter is IAutoDispose)
+                    if (this.Counter != null && this.Counter is IAutoDispose)
                     {
-                        this.counter.OnReset -= Counter_OnReset;
-                        this.counter.Dispose();
+                        this.Counter.OnReset -= Counter_OnReset;
+                        this.Counter.Dispose();
                     }
+
+                    //if (this.Updater != null && this.Updater is IAutoDispose)
+                    //{
+                    //    this.Updater.CfgChanged -= Updater_CfgChanged;
+                    //}
 
                     this.semaphoreSlim?.Dispose();
                 }

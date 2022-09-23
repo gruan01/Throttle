@@ -10,7 +10,7 @@ namespace AsNum.Throttle
     /// <summary>
     /// 
     /// </summary>
-    public abstract class BaseCounter : IDisposable
+    public abstract class BaseCounter : IUpdate, IDisposable
     {
 
         /// <summary>
@@ -32,7 +32,7 @@ namespace AsNum.Throttle
         /// <summary>
         /// 
         /// </summary>
-        public TimeSpan ThrottlePeriod { get; private set; }
+        public TimeSpan Period { get; private set; }
 
         /// <summary>
         /// 
@@ -42,7 +42,7 @@ namespace AsNum.Throttle
         /// <summary>
         /// 
         /// </summary>
-        public int BoundedCapacity { get; private set; }
+        public int Frequency { get; private set; }
 
 
         /// <summary>
@@ -68,6 +68,7 @@ namespace AsNum.Throttle
         /// </summary>
         /// <returns></returns>
         public abstract ValueTask<bool> TryLock();
+
 
 
         /// <summary>
@@ -100,27 +101,45 @@ namespace AsNum.Throttle
         /// </summary>
         /// <param name="throttleName"></param>
         /// <param name="throttleID"></param>
-        /// <param name="boundedCapacity"></param>
-        /// <param name="throttlePeriod"></param>
+        /// <param name="frequency"></param>
+        /// <param name="period"></param>
         /// <param name="lockTimeout"></param>
-        internal void SetUp(string throttleName, string throttleID, int boundedCapacity, TimeSpan throttlePeriod, TimeSpan? lockTimeout)
+        internal void SetUp(string throttleName, string throttleID, int frequency, TimeSpan period, TimeSpan? lockTimeout)
         {
             this.ThrottleName = throttleName;
             this.ThrottleID = throttleID;
 
-            this.ThrottlePeriod = throttlePeriod;
-            this.BoundedCapacity = boundedCapacity;
+            this.Period = period;
+            this.Frequency = frequency;
 
 
             this.LockTimeout = lockTimeout;
 
-            this.Initialize();
+            this.Initialize(true);
         }
 
         /// <summary>
         /// 
         /// </summary>
-        protected abstract void Initialize();
+        /// <param name="period"></param>
+        /// <param name="frequency"></param>
+        Task IUpdate.Update(TimeSpan period, int frequency)
+        {
+            //值不一致时， 才重新初始化
+            if (this.Period != period || this.Frequency != frequency)
+            {
+                this.Frequency = frequency;
+                this.Period = period;
+                this.Initialize(false);
+            }
+
+            return Task.CompletedTask;
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        protected abstract void Initialize(bool firstLoaded);
 
 
 

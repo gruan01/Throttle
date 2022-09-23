@@ -1,4 +1,6 @@
-﻿using System.Threading.Tasks;
+﻿using System;
+using System.Collections;
+using System.Threading.Tasks;
 using StackExchange.Redis;
 
 namespace AsNum.Throttle.Redis
@@ -8,33 +10,78 @@ namespace AsNum.Throttle.Redis
     /// </summary>
     public static class Extensions
     {
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="v"></param>
+        /// <param name="defaultValue"></param>
+        /// <returns></returns>
+        internal static async Task<int> ToInt(this Task<RedisValue> v, int defaultValue)
+        {
+            try
+            {
+                var vv = await v;
+                if (vv.TryParse(out int val))
+                    return val;
+            }
+            catch (Exception e)
+            {
+
+            }
+            return defaultValue;
+        }
+
 
         /// <summary>
         /// 
         /// </summary>
-        /// <param name="db"></param>
-        /// <param name="key"></param>
+        /// <param name="v"></param>
         /// <param name="defaultValue"></param>
-        /// <param name="flags"></param>
         /// <returns></returns>
-        public static async ValueTask<int> StringGetIntAsync(this IDatabase db, RedisKey key, int defaultValue = default, CommandFlags flags = CommandFlags.None)
+        internal static int ToInt(this RedisValue v, int defaultValue)
         {
-            var v = await db.StringGetAsync(key, flags);
-            if (!v.IsNull)
+            try
             {
-                try
-                {
-                    return (int)v;
-                }
-                catch
-                {
-
-                }
+                if (v.TryParse(out int val))
+                    return val;
             }
+            catch (Exception e)
+            {
+
+            }
+            return defaultValue;
+        }
+
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="v"></param>
+        /// <param name="defaultValue"></param>
+        /// <returns></returns>
+        internal static async Task<double> ToDouble(this Task<RedisValue> v, double defaultValue)
+        {
+            var vv = await v;
+            if (vv.TryParse(out double val))
+                return val;
 
             return defaultValue;
         }
 
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="v"></param>
+        /// <param name="defaultValue"></param>
+        /// <returns></returns>
+        internal static double ToDouble(this RedisValue v, double defaultValue)
+        {
+            if (v.TryParse(out double val))
+                return val;
+
+            return defaultValue;
+        }
 
         /// <summary>
         /// 

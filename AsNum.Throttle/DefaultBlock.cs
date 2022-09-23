@@ -1,4 +1,6 @@
-﻿using System.Collections.Concurrent;
+﻿using System;
+using System.Collections.Concurrent;
+using System.Data.OleDb;
 using System.Threading.Tasks;
 
 namespace AsNum.Throttle
@@ -17,9 +19,18 @@ namespace AsNum.Throttle
         /// <summary>
         /// 
         /// </summary>
-        protected override void Initialize()
+        protected override void Initialize(bool firstLoad)
         {
-            this.block = new BlockingCollection<byte>(this.BoundedCapacity);
+            var old = this.block;
+            this.block = new BlockingCollection<byte>(this.Frequency);
+
+            //重新配置时, 把已经占用的空间重新占用.
+            var n = Math.Min(old?.Count ?? 0, this.Frequency);
+            for (var i = 0; i < n; i++)
+            {
+                this.block.Add(0);
+            }
+            old?.Dispose();
         }
 
 
@@ -27,7 +38,7 @@ namespace AsNum.Throttle
         /// <summary>
         /// 
         /// </summary>
-        public override Task Acquire(string tag)
+        internal override Task Acquire(string tag)
         {
             if (this.LockTimeout.HasValue)
                 this.block.TryAdd(0, this.LockTimeout.Value);
@@ -42,7 +53,7 @@ namespace AsNum.Throttle
         /// <summary>
         /// 
         /// </summary>
-        public override Task Release(string tag)
+        internal override Task Release(string tag)
         {
             if (this.LockTimeout.HasValue)
                 this.block.TryTake(out _, this.LockTimeout.Value);

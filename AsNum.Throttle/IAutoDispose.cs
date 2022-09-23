@@ -7,7 +7,7 @@ namespace AsNum.Throttle
     /// <summary>
     /// 
     /// </summary>
-    internal interface IAutoDispose
+    public interface IAutoDispose
     {
     }
 }
