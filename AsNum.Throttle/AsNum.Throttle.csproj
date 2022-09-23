@@ -2,15 +2,15 @@
 
 	<PropertyGroup>
 		<TargetFrameworks>net5;net48</TargetFrameworks>
-		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+		<GeneratePackageOnBuild>false</GeneratePackageOnBuild>
 		<IncludeSymbols>true</IncludeSymbols>
 		<PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
 		<PackageTags>AsNum</PackageTags>
 		<GenerateAssemblyInfo>true</GenerateAssemblyInfo>
-		<PackageVersion>1.0.4.19</PackageVersion>
-		<AssemblyVersion>1.0.4.19</AssemblyVersion>
-		<FileVersion>1.0.4.19</FileVersion>
-		<Version>1.0.4.19</Version>
+		<PackageVersion>2.0.0.0</PackageVersion>
+		<AssemblyVersion>2.0.0.0</AssemblyVersion>
+		<FileVersion>2.0.0.0</FileVersion>
+		<Version>2.0.0.0</Version>
 		<Authors>xling</Authors>
 		<LangVersion>8.0</LangVersion>
 		<Description>Action / Func throttle in a period</Description>
@@ -28,8 +28,8 @@
 
 	<ItemGroup>
 		<PackageReference Include="IDisposableAnalyzers" Version="4.0.2">
-		  <PrivateAssets>all</PrivateAssets>
-		  <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+			<PrivateAssets>all</PrivateAssets>
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 		</PackageReference>
 		<PackageReference Include="System.Threading.Tasks.Extensions" Version="4.5.4" />
 	</ItemGroup>

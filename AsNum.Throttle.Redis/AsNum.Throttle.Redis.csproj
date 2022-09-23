@@ -2,16 +2,16 @@
 
 	<PropertyGroup>
 		<TargetFrameworks>net5;net48</TargetFrameworks>
-		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+		<GeneratePackageOnBuild>false</GeneratePackageOnBuild>
 		<IncludeSymbols>true</IncludeSymbols>
 		<PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
 		<GenerateAssemblyInfo>false</GenerateAssemblyInfo>
 		<PackageTags>AsNum</PackageTags>
 		<GenerateAssemblyInfo>true</GenerateAssemblyInfo>
-		<PackageVersion>1.0.4.17</PackageVersion>
-		<AssemblyVersion>1.0.4.17</AssemblyVersion>
-		<FileVersion>1.0.4.17</FileVersion>
-		<Version>1.0.4.17</Version>
+		<PackageVersion>2.0.0.0</PackageVersion>
+		<AssemblyVersion>2.0.0.0</AssemblyVersion>
+		<FileVersion>2.0.0.0</FileVersion>
+		<Version>2.0.0.0</Version>
 		<Authors>xling</Authors>
 		<LangVersion>8.0</LangVersion>
 		<DocumentationFile>bin\$(Configuration)\$(TargetFramework)\$(AssemblyName).xml</DocumentationFile>
@@ -29,8 +29,8 @@
 
 	<ItemGroup>
 		<PackageReference Include="IDisposableAnalyzers" Version="4.0.2">
-		  <PrivateAssets>all</PrivateAssets>
-		  <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+			<PrivateAssets>all</PrivateAssets>
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 		</PackageReference>
 		<PackageReference Include="StackExchange.Redis" Version="2.6.66" />
 	</ItemGroup>
