@@ -24,7 +24,7 @@ namespace AsNum.Throttle.Redis
                 if (vv.TryParse(out int val))
                     return val;
             }
-            catch (Exception e)
+            catch
             {
 
             }
@@ -45,7 +45,7 @@ namespace AsNum.Throttle.Redis
                 if (v.TryParse(out int val))
                     return val;
             }
-            catch (Exception e)
+            catch
             {
 
             }

@@ -14,7 +14,7 @@ namespace AsNum.Throttle
         /// <summary>
         /// 
         /// </summary>
-        private BlockingCollection<byte> block;
+        private BlockingCollection<byte>? block;
 
         /// <summary>
         /// 
@@ -41,9 +41,9 @@ namespace AsNum.Throttle
         internal override Task Acquire(string tag)
         {
             if (this.LockTimeout.HasValue)
-                this.block.TryAdd(0, this.LockTimeout.Value);
+                this.block!.TryAdd(0, this.LockTimeout.Value);
             else
-                this.block.Add(0);
+                this.block!.Add(0);
 
             return Task.CompletedTask;
         }
@@ -56,9 +56,9 @@ namespace AsNum.Throttle
         internal override Task Release(string tag)
         {
             if (this.LockTimeout.HasValue)
-                this.block.TryTake(out _, this.LockTimeout.Value);
+                this.block!.TryTake(out _, this.LockTimeout.Value);
             else
-                this.block.Take();
+                this.block!.Take();
 
             return Task.CompletedTask;
         }

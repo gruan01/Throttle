@@ -14,7 +14,7 @@ namespace AsNum.Throttle
         /// <param name="message"></param>
         /// <param name="e"></param>
         /// <exception cref="NotImplementedException"></exception>
-        public void Log(string message, Exception e)
+        public void Log(string? message, Exception? e)
         {
             Console.WriteLine($"{DateTime.Now:HH:mm:ss} {message} {e?.Message}\r\n{e?.StackTrace}");
         }

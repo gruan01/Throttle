@@ -25,12 +25,12 @@ namespace AsNum.Throttle.Redis
         /// <summary>
         /// 
         /// </summary>
-        private string keyPeriod;
+        private string keyPeriod = "";
 
         /// <summary>
         /// 
         /// </summary>
-        private string keyFrequency;
+        private string keyFrequency = "";
 
 
         private bool firstLoad = true;

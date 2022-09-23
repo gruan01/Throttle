@@ -16,17 +16,17 @@ namespace AsNum.Throttle
         /// <summary>
         /// 
         /// </summary>
-        internal event EventHandler<EventArgs> OnReset;
+        internal event EventHandler<EventArgs>? OnReset;
 
         /// <summary>
         /// 
         /// </summary>
-        public string ThrottleName { get; private set; }
+        public string ThrottleName { get; private set; } = "";
 
         /// <summary>
         /// 
         /// </summary>
-        public string ThrottleID { get; private set; }
+        public string ThrottleID { get; private set; } = "";
 
 
         /// <summary>

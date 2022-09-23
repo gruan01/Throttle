@@ -14,18 +14,7 @@ namespace AsNum.Throttle
         /// <summary>
         /// 当计数周期重置时触发
         /// </summary>
-        public event EventHandler<PeriodElapsedEventArgs> OnPeriodElapsed;
-
-        ///// <summary>
-        ///// 
-        ///// </summary>
-        //public event EventHandler<MsgEventArgs> OnMessage;
-
-        /// <summary>
-        /// 当前 ThrottleID 的 ID, 随机分配.
-        /// </summary>
-        private readonly string ThrottleID;
-
+        public event EventHandler<PeriodElapsedEventArgs>? OnPeriodElapsed;
 
         /// <summary>
         /// 
@@ -68,13 +57,13 @@ namespace AsNum.Throttle
         /// <summary>
         /// 
         /// </summary>
-        private readonly ILogger logger;
+        private readonly ILogger? logger;
 
 
         /// <summary>
         /// 用于控制并发数
         /// </summary>
-        private readonly SemaphoreSlim semaphoreSlim = null;
+        private readonly SemaphoreSlim? semaphoreSlim = null;
 
         /// <summary>
         /// 
@@ -91,10 +80,10 @@ namespace AsNum.Throttle
         public Throttle(string throttleName,
                         TimeSpan period,
                         int frequency,
-                        BaseBlock block = null,
-                        BaseCounter counter = null,
-                        BaseCfgUpdater updater = null,
-                        ILogger logger = null,
+                        BaseBlock? block = null,
+                        BaseCounter? counter = null,
+                        BaseCfgUpdater? updater = null,
+                        ILogger? logger = null,
                         TimeSpan? lockTimeout = null,
                         int? concurrentCount = null
                         )
@@ -114,22 +103,22 @@ namespace AsNum.Throttle
             if (concurrentCount.HasValue)
                 this.semaphoreSlim = new SemaphoreSlim(concurrentCount.Value, concurrentCount.Value);
 
-            this.ThrottleID = Guid.NewGuid().ToString("N");
+            var throttleID = Guid.NewGuid().ToString("N");
 
-            this.logger = logger ?? new DefaultleLogger();
+            this.logger = logger;
 
             this.Blocker = block ?? new DefaultBlock();
             this.Blocker.Setup(frequency, lockTimeout);
 
 
             this.Counter = counter ?? new DefaultCounter();
-            this.Counter.SetUp(throttleName, this.ThrottleID, frequency, period, lockTimeout);
+            this.Counter.SetUp(throttleName, throttleID, frequency, period, lockTimeout);
             this.Counter.OnReset += Counter_OnReset;
 
             this.Updater = updater ?? new DefaultCfgUpater();
             this.Updater.Subscribe(this.Counter);
             this.Updater.Subscribe(this.Blocker);
-            this.Updater.SetUp(throttleName, this.ThrottleID, period, frequency, logger);
+            this.Updater.SetUp(throttleName, throttleID, period, frequency, logger);
         }
 
 
@@ -140,7 +129,7 @@ namespace AsNum.Throttle
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
-        private void Counter_OnReset(object sender, EventArgs e)
+        private void Counter_OnReset(object? sender, EventArgs e)
         {
             this.ProcessQueue();
             this.OnPeriodElapsed?.Invoke(this, new PeriodElapsedEventArgs());
@@ -177,7 +166,7 @@ namespace AsNum.Throttle
                 catch (Exception e)
                 {
                     //this.OnMessage?.Invoke(this, new MsgEventArgs() { Ex = e });
-                    this.logger.Log(null, e);
+                    this.logger?.Log(null, e);
                 }
             });
         }
@@ -273,7 +262,7 @@ namespace AsNum.Throttle
                                 var x = 0;
                                 for (var i = 0; i < n; i++)
                                 {
-                                    if (tsks.TryDequeue(out Task tsk))
+                                    if (tsks.TryDequeue(out Task? tsk) && tsk != null)
                                     {
                                         x++;
                                         try
@@ -284,8 +273,7 @@ namespace AsNum.Throttle
                                         }
                                         catch (Exception e)
                                         {
-                                            //this.OnMessage?.Invoke(this, new MsgEventArgs() { Ex = e });
-                                            this.logger.Log(null, e);
+                                            this.logger?.Log(null, e);
                                         }
                                     }
                                     else
@@ -302,8 +290,7 @@ namespace AsNum.Throttle
                 }
                 catch (Exception e)
                 {
-                    //this.OnMessage?.Invoke(this, new MsgEventArgs() { Ex = e });
-                    this.logger.Log(null, e);
+                    this.logger?.Log(null, e);
                 }
                 finally
                 {
@@ -322,7 +309,7 @@ namespace AsNum.Throttle
         /// <typeparam name="T"></typeparam>
         /// <param name="org"></param>
         /// <returns></returns>
-        private Func<object, T> Wrap<T>(Func<object, T> org)
+        private Func<object?, T> Wrap<T>(Func<object?, T> org)
         {
             if (this.semaphoreSlim != null)
             {
@@ -451,7 +438,7 @@ namespace AsNum.Throttle
         /// <param name="cancellation"></param>
         /// <param name="creationOptions"></param>
         /// <returns></returns>
-        public async Task<T> Execute<T>(Func<object, T> func, object state, CancellationToken cancellation = default, TaskCreationOptions creationOptions = TaskCreationOptions.None)
+        public async Task<T> Execute<T>(Func<object?, T> func, object? state, CancellationToken cancellation = default, TaskCreationOptions creationOptions = TaskCreationOptions.None)
         {
             var t = new Task<T>(this.Wrap(func), state, cancellation, creationOptions);
             await this.Enqueue(t);
@@ -486,7 +473,7 @@ namespace AsNum.Throttle
         /// <param name="cancellation"></param>
         /// <param name="creationOptions"></param>
         /// <returns></returns>
-        public async Task<T> Execute<T>(Func<object, Task<T>> func, object state, CancellationToken cancellation = default, TaskCreationOptions creationOptions = TaskCreationOptions.None)
+        public async Task<T> Execute<T>(Func<object?, Task<T>> func, object? state, CancellationToken cancellation = default, TaskCreationOptions creationOptions = TaskCreationOptions.None)
         {
             var t = new WrapFuncTask<T>(this.Wrap(func), state, cancellation, creationOptions);
             await this.Enqueue(t);
@@ -518,7 +505,7 @@ namespace AsNum.Throttle
         /// <param name="cancellation">动作的参数</param>
         /// <param name="creationOptions"></param>
         /// <returns></returns>
-        public async Task Execute<T>(Action<object> act, object state, CancellationToken cancellation = default, TaskCreationOptions creationOptions = TaskCreationOptions.None)
+        public async Task Execute<T>(Action<object?> act, object? state, CancellationToken cancellation = default, TaskCreationOptions creationOptions = TaskCreationOptions.None)
         {
             var t = new Task(this.Wrap(act), state, cancellation, creationOptions);
             await this.Enqueue(t);
@@ -553,8 +540,7 @@ namespace AsNum.Throttle
             }
             catch (Exception e)
             {
-                //this.OnMessage?.Invoke(this, new MsgEventArgs() { Ex = e });
-                this.logger.Log(null, e);
+                this.logger?.Log(null, e);
             }
             finally
             {

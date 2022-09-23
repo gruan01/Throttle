@@ -10,13 +10,13 @@ namespace AsNum.Throttle
         /// <summary>
         /// 
         /// </summary>
-        private readonly Action<string, Exception> func;
+        private readonly Action<string?, Exception?> func;
 
         /// <summary>
         /// 
         /// </summary>
         /// <param name="func"></param>
-        public WrapLogger(Action<string, Exception> func)
+        public WrapLogger(Action<string?, Exception?> func)
         {
             this.func = func;
         }
@@ -26,7 +26,7 @@ namespace AsNum.Throttle
         /// </summary>
         /// <param name="message"></param>
         /// <param name="e"></param>
-        public void Log(string message, Exception e)
+        public void Log(string? message, Exception? e)
         {
             this.func?.Invoke(message, e);
         }

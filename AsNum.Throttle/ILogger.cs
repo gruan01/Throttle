@@ -13,7 +13,7 @@ namespace AsNum.Throttle
         /// </summary>
         /// <param name="message"></param>
         /// <param name="e"></param>
-        void Log(string message, Exception e);
+        void Log(string? message, Exception? e);
 
     }
 }

@@ -30,7 +30,7 @@ namespace AsNum.Throttle
         /// <param name="state"></param>
         /// <param name="cancellationToken"></param>
         /// <param name="creationOptions"></param>
-        public WrapFuncTask(Func<object, Task<T>> function, object state, CancellationToken cancellationToken, TaskCreationOptions creationOptions)
+        public WrapFuncTask(Func<object?, Task<T>> function, object? state, CancellationToken cancellationToken, TaskCreationOptions creationOptions)
             : base(function, state, cancellationToken, creationOptions)
         {
         }

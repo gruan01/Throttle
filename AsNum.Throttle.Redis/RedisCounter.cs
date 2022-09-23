@@ -40,12 +40,12 @@ namespace AsNum.Throttle.Redis
         /// <summary>
         /// 
         /// </summary>
-        private string countKey;
+        private string countKey = "";
 
         /// <summary>
         /// 
         /// </summary>
-        private string lockKey;
+        private string lockKey = "";
 
 
         /// <summary>

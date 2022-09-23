@@ -5,13 +5,15 @@ VisualStudioVersion = 17.3.32901.215
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AsNum.Throttle", "AsNum.Throttle\AsNum.Throttle.csproj", "{81D4CDA6-ECD7-4A5F-A431-4D78EC012B08}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AsNum.Throttle.CoreTest", "AsNum.Throttle.CoreTest\AsNum.Throttle.CoreTest.csproj", "{921FCD26-0F6D-4E67-9D4D-C7738CFA0C96}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AsNum.Throttle.TestConsole.N5", "AsNum.Throttle.CoreTest\AsNum.Throttle.TestConsole.N5.csproj", "{921FCD26-0F6D-4E67-9D4D-C7738CFA0C96}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AsNum.Throttle.Redis", "AsNum.Throttle.Redis\AsNum.Throttle.Redis.csproj", "{5FA8D04A-9AE4-4AB9-A1C1-0B8F16932AC2}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AsNum.Throttle.TestConsole462", "AsNum.Throttle.TestConsole462\AsNum.Throttle.TestConsole462.csproj", "{4878DF50-EE9B-4A41-837E-8A71862D1097}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AsNum.Throttle.TestConsole", "AsNum.Throttle.TestConsole462\AsNum.Throttle.TestConsole.csproj", "{4878DF50-EE9B-4A41-837E-8A71862D1097}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AsNum.Throttle.UnitTest", "AsNum.Throttle.UnitTest\AsNum.Throttle.UnitTest.csproj", "{701D6649-6A52-4CA0-ACF6-BBFA10213337}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AsNum.Throttle.UnitTest", "AsNum.Throttle.UnitTest\AsNum.Throttle.UnitTest.csproj", "{701D6649-6A52-4CA0-ACF6-BBFA10213337}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Test", "Test", "{56B69606-1520-4CCB-A9FB-0312F000CE6C}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -42,6 +44,11 @@ Global
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{921FCD26-0F6D-4E67-9D4D-C7738CFA0C96} = {56B69606-1520-4CCB-A9FB-0312F000CE6C}
+		{4878DF50-EE9B-4A41-837E-8A71862D1097} = {56B69606-1520-4CCB-A9FB-0312F000CE6C}
+		{701D6649-6A52-4CA0-ACF6-BBFA10213337} = {56B69606-1520-4CCB-A9FB-0312F000CE6C}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {C9192770-B9D5-4F28-B441-AD8E1B119191}

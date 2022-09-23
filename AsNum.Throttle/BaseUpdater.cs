@@ -13,12 +13,12 @@ namespace AsNum.Throttle
         /// <summary>
         /// 
         /// </summary>
-        protected string ThrottleName { get; private set; }
+        protected string ThrottleName { get; private set; } = "";
 
         /// <summary>
         /// 
         /// </summary>
-        protected string ThrottleID { get; private set; }
+        protected string ThrottleID { get; private set; } = "";
 
         /// <summary>
         /// 
@@ -33,7 +33,7 @@ namespace AsNum.Throttle
         /// <summary>
         /// 
         /// </summary>
-        protected ILogger Logger { get; private set; }
+        protected ILogger? Logger { get; private set; }
 
 
         /// <summary>
@@ -74,7 +74,7 @@ namespace AsNum.Throttle
         /// 
         /// </summary>
         /// <returns></returns>
-        internal void SetUp(string throttleName, string throttleID, TimeSpan period, int frequency, ILogger logger)
+        internal void SetUp(string throttleName, string throttleID, TimeSpan period, int frequency, ILogger? logger)
         {
             this.Logger = logger;
             this.ThrottleName = throttleName;

@@ -26,7 +26,7 @@ namespace AsNum.Throttle
         /// <summary>
         /// 用于 周期性的 重置计数
         /// </summary>
-        private Timer timer;
+        private Timer? timer;
 
         /// <summary>
         /// 
@@ -63,7 +63,7 @@ namespace AsNum.Throttle
         /// <summary>
         /// 
         /// </summary>
-        private void Timer_Elapsed(object state)
+        private void Timer_Elapsed(object? state)
         {
             Interlocked.Exchange(ref this._currentCount, 0);
             this.ResetFired();
