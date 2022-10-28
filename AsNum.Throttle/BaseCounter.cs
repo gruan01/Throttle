@@ -21,12 +21,12 @@ namespace AsNum.Throttle
         /// <summary>
         /// 
         /// </summary>
-        public string ThrottleName { get; private set; } = "";
+        protected string ThrottleName { get; private set; } = "";
 
         /// <summary>
         /// 
         /// </summary>
-        public string ThrottleID { get; private set; } = "";
+        protected string ThrottleID { get; private set; } = "";
 
 
         /// <summary>

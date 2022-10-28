@@ -16,7 +16,7 @@ namespace AsNum.Throttle
         /// <summary>
         /// 避免因为客户端失去连接而引起的死锁
         /// </summary>
-        public TimeSpan? LockTimeout { get; private set; }
+        protected TimeSpan? LockTimeout { get; private set; }
 
 
         /// <summary>
