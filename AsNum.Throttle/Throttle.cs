@@ -302,7 +302,15 @@ namespace AsNum.Throttle
                 }
                 finally
                 {
-                    await this.Counter.ReleaseLock();
+                    try
+                    {
+                        await this.Counter.ReleaseLock();
+                    }
+                    catch (Exception e)
+                    {
+                        //RedisCounter 在 ReleaseLock 时, 可能会因为连接超时而报错.
+                        this.logger?.Log(null, e);
+                    }
                 }
             }
         }
