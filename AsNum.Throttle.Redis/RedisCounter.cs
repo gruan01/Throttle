@@ -17,7 +17,7 @@ namespace AsNum.Throttle.Redis
         /// <summary>
         /// 
         /// </summary>
-        private static readonly string KEY_EXPIRED_CHANNEL = "__keyevent@0__:expired";
+        private static readonly RedisChannel KEY_EXPIRED_CHANNEL = new RedisChannel("__keyevent@0__:expired", RedisChannel.PatternMode.Auto);
 
 
         /// <summary>
@@ -54,13 +54,17 @@ namespace AsNum.Throttle.Redis
         /// <param name="connection"></param>
         /// <param name="batchCount">批大小; 为保证公平, 这个数字越小越好; 但是为了减少与 Redis 之间的通讯, 这个值越大越好.</param>
         /// /// <param name="rndSleepInMS">用于随机等待, 如果不等待, 太消耗CPU.</param>
-        public RedisCounter(ConnectionMultiplexer connection, int batchCount = 1, int? rndSleepInMS = 5)
+        public RedisCounter(ConnectionMultiplexer connection, int batchCount = 1, int rndSleepInMS = 5)
         {
             if (connection == null)
                 throw new ArgumentNullException(nameof(connection));
 
             if (batchCount <= 0)
                 throw new ArgumentOutOfRangeException($"{nameof(batchCount)} must greate than 0");
+
+            if (rndSleepInMS <= 0)
+                throw new ArgumentOutOfRangeException($"{nameof(rndSleepInMS)} must greate than 0");
+
 
             this.db = connection.GetDatabase();
             this.subscriber = connection.GetSubscriber();
@@ -102,7 +106,7 @@ namespace AsNum.Throttle.Redis
         /// 即然用到了限频, 而且用到了 RedisCounter 说明是多进程同时在运行, 频率一定不会太高,
         /// 所以随机等待对请求速度影响不大.
         /// </summary>
-        private readonly int? rndSleepInMS = 5;
+        private readonly int rndSleepInMS = 5;
 
         /// <summary>
         /// 随机待待0~2 毫秒, 拯救CPU
@@ -110,12 +114,8 @@ namespace AsNum.Throttle.Redis
         /// <returns></returns>
         public override async Task WaitMoment()
         {
-            if (this.rndSleepInMS > 0)
-            {
-                var t = rnd.Next(0, this.rndSleepInMS.Value);
-                if (t > 0)
-                    await Task.Delay(t);
-            }
+            var t = rnd.Next(1, this.rndSleepInMS);
+            await Task.Delay(t);
         }
 
 

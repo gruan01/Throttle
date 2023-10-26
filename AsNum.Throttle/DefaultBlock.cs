@@ -38,7 +38,7 @@ namespace AsNum.Throttle
         /// <summary>
         /// 
         /// </summary>
-        internal override Task Acquire(string tag)
+        internal override Task Acquire()
         {
             if (this.LockTimeout.HasValue)
                 this.block!.TryAdd(0, this.LockTimeout.Value);
@@ -53,7 +53,7 @@ namespace AsNum.Throttle
         /// <summary>
         /// 
         /// </summary>
-        internal override Task Release(string tag)
+        internal override Task Release()
         {
             if (this.LockTimeout.HasValue)
                 this.block!.TryTake(out _, this.LockTimeout.Value);

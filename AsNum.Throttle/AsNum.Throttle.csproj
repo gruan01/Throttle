@@ -1,18 +1,18 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
-		<TargetFrameworks>net5;net48</TargetFrameworks>
+		<TargetFrameworks>net6</TargetFrameworks>
 		<GeneratePackageOnBuild>false</GeneratePackageOnBuild>
 		<IncludeSymbols>true</IncludeSymbols>
 		<PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
 		<PackageTags>AsNum</PackageTags>
 		<GenerateAssemblyInfo>true</GenerateAssemblyInfo>
-		<PackageVersion>2.0.0.2</PackageVersion>
-		<AssemblyVersion>2.0.0.2</AssemblyVersion>
-		<FileVersion>2.0.0.2</FileVersion>
-		<Version>2.0.0.0</Version>
+		<PackageVersion>2.0.1.0</PackageVersion>
+		<AssemblyVersion>2.0.1.0</AssemblyVersion>
+		<FileVersion>2.0.1.0</FileVersion>
+		<Version>2.0.1.0</Version>
 		<Authors>xling</Authors>
-		<LangVersion>8.0</LangVersion>
+		<LangVersion>11</LangVersion>
 		<Description>Action / Func throttle in a period</Description>
 		<DocumentationFile>bin\$(Configuration)\$(TargetFramework)\$(AssemblyName).xml</DocumentationFile>
 		<RepositoryUrl>https://github.com/gruan01/Throttle</RepositoryUrl>
@@ -27,11 +27,11 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<PackageReference Include="IDisposableAnalyzers" Version="4.0.2">
+		<PackageReference Include="IDisposableAnalyzers" Version="4.0.7">
 			<PrivateAssets>all</PrivateAssets>
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 		</PackageReference>
-		<PackageReference Include="System.Threading.Tasks.Extensions" Version="4.5.4" />
+		<!--<PackageReference Include="System.Threading.Tasks.Extensions" Version="4.5.4" />-->
 	</ItemGroup>
 
 </Project>

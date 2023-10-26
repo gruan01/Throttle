@@ -22,12 +22,12 @@ namespace AsNum.Throttle
         /// <summary>
         /// 尝试占用一个位置
         /// </summary>
-        internal abstract Task Acquire(string tag);
+        internal abstract Task Acquire();
 
         /// <summary>
         /// 释放一个位置
         /// </summary>
-        internal abstract Task Release(string tag);
+        internal abstract Task Release();
 
 
         /// <summary>

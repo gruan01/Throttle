@@ -1,6 +1,5 @@
 ﻿using StackExchange.Redis;
 using System;
-using System.Diagnostics;
 using System.Threading.Tasks;
 
 namespace AsNum.Throttle.Redis
@@ -36,7 +35,7 @@ namespace AsNum.Throttle.Redis
         private bool firstLoad = true;
 
 
-        private string Channnel => $"{this.ThrottleName}CfgChanged";
+        private RedisChannel Channnel { get; }
 
         /// <summary>
         /// 
@@ -49,6 +48,7 @@ namespace AsNum.Throttle.Redis
 
             this.db = connection.GetDatabase();
             this.subscriber = connection.GetSubscriber();
+            this.Channnel = new($"{this.ThrottleName}CfgChanged", RedisChannel.PatternMode.Auto);
         }
 
 
@@ -194,7 +194,7 @@ namespace AsNum.Throttle.Redis
             {
                 if (flag)
                 {
-                    this.subscriber?.Unsubscribe(this.ThrottleName);
+                    this.subscriber?.Unsubscribe(this.Channnel);
                 }
                 isDisposed = true;
             }

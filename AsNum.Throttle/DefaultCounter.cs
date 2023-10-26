@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -50,8 +49,10 @@ namespace AsNum.Throttle
                 this.timer.Change(this.Period, this.Period);
             }
             else
+            {
+                this.timer?.Dispose();
                 this.timer = new Timer(new TimerCallback(Timer_Elapsed), null, this.Period, this.Period);
-
+            }
             //一般如果是限制执行频率的， 频率根本不会太大。
             //如果不暂停的话， 会一直执行循环，导致 CPU 空转浪费。
             //假设1秒钟允许执行60次，合16毫秒执行一次，

@@ -148,8 +148,7 @@ namespace AsNum.Throttle
         /// 
         /// </summary>
         /// <param name="task"></param>
-        /// <param name="tag"></param>
-        private void Unwrap(Task task, string tag)
+        private void Unwrap(Task task)
         {
             var _tsk = task;
             // 这里对应的是 Throttle.Execute(Action)
@@ -169,7 +168,7 @@ namespace AsNum.Throttle
                 try
                 {
                     //当任务执行完时, 才能阻止队列的一个空间出来,供下一个任务进入
-                    await this.Blocker.Release(tag);
+                    await this.Blocker.Release();
                 }
                 catch (Exception e)
                 {
@@ -186,16 +185,12 @@ namespace AsNum.Throttle
         /// <param name="task"></param>
         private async Task Enqueue(Task task)
         {
-            //用于标识 Task
-            //var tag = $"{this.ThrottleName}#{this.ThrottleID}#{task.Id}";
-            var tag = task.Id.ToString();
-
-            this.Unwrap(task, tag);
+            this.Unwrap(task);
 
             try
             {
                 //占用一个空间, 如果空间占满, 会无限期等待,直至有空间释放出来
-                await this.Blocker.Acquire(tag);
+                await this.Blocker.Acquire();
             }
             catch (Exception e)
             {
@@ -258,41 +253,36 @@ namespace AsNum.Throttle
                         var currCount = await this.Counter.CurrentCount();
                         if (currCount < this.Counter.Frequency)
                         {
-                            //if (await this.counter.TryLock())
+                            //还有多少位置
+                            var space = Math.Max(this.Counter.Frequency - currCount, 0);
+
+                            //可以插入几个
+                            var n = Math.Min(this.Counter.BatchCount, space);
+
+                            var x = 0;
+                            for (var i = 0; i < n; i++)
                             {
-
-                                //还有多少位置
-                                var space = Math.Max(this.Counter.Frequency - currCount, 0);
-
-                                //可以插入几个
-                                var n = Math.Min(this.Counter.BatchCount, space);
-
-                                var x = 0;
-                                for (var i = 0; i < n; i++)
+                                if (tsks.TryDequeue(out Task? tsk) && tsk != null)
                                 {
-                                    if (tsks.TryDequeue(out Task? tsk) && tsk != null)
+                                    x++;
+                                    try
                                     {
-                                        x++;
-                                        try
-                                        {
-                                            //被取消的任务,不能在 start
-                                            if (!tsk.IsCanceled && !tsk.IsCompleted)
-                                                tsk.Start();
-                                        }
-                                        catch (Exception e)
-                                        {
-                                            this.logger?.Log(null, e);
-                                        }
+                                        //被取消的任务,不能在 start
+                                        if (!tsk.IsCanceled && !tsk.IsCompleted)
+                                            tsk.Start();
                                     }
-                                    else
-                                        break;
+                                    catch (Exception e)
+                                    {
+                                        this.logger?.Log(null, e);
+                                    }
                                 }
-
-                                if (x > 0)
-                                    await this.Counter.IncrementCount(x);
-
-                                //await this.counter.ReleaseLock();
+                                else
+                                    break;
                             }
+
+                            if (x > 0)
+                                await this.Counter.IncrementCount(x);
+
                         }
                     }
                 }
