@@ -17,20 +17,17 @@ namespace AsNum.Throttle
         public event EventHandler<PeriodElapsedEventArgs>? OnPeriodElapsed;
 
         /// <summary>
-        /// 
+        /// 0: 当前没有在运行 RunLoop, 1: 当前正在运行.
         /// </summary>
-        private bool inProcess;
-
-        /// <summary>
-        /// 
-        /// </summary>
-        private readonly object lockObj = new object();
-
+        /// <remarks>
+        /// 没有使用 bool , 是因为 Interlocked 不能操作 boolean; bool 需要用结合 lock
+        /// </remarks>
+        private volatile uint inProcess = 0;
 
         /// <summary>
         /// 任务队列
         /// </summary>
-        private readonly ConcurrentQueue<Task> tsks = new ConcurrentQueue<Task>();
+        private readonly ConcurrentQueue<Task> tskQueue = new();
 
         #endregion
 
@@ -70,6 +67,12 @@ namespace AsNum.Throttle
         /// 用于控制并发数
         /// </summary>
         private readonly SemaphoreSlim? semaphoreSlim = null;
+
+
+        /// <summary>
+        /// 
+        /// </summary>
+        private readonly SpinWait spinWait = new();
 
         /// <summary>
         /// 
@@ -172,7 +175,6 @@ namespace AsNum.Throttle
                 }
                 catch (Exception e)
                 {
-                    //this.OnMessage?.Invoke(this, new MsgEventArgs() { Ex = e });
                     this.logger?.Log(null, e);
                 }
             });
@@ -194,12 +196,11 @@ namespace AsNum.Throttle
             }
             catch (Exception e)
             {
-                //this.OnMessage?.Invoke(this, new MsgEventArgs() { Ex = e });
                 this.logger?.Log(null, e);
             }
 
             //占用一个空间后, 才能将任务插入队列
-            this.tsks.Enqueue(task);
+            this.tskQueue.Enqueue(task);
 
 
             //尝试执行任务.因为初始状态下, 任务队列是空的, while 循环已退出.
@@ -213,21 +214,17 @@ namespace AsNum.Throttle
         /// </summary>
         private void ProcessQueue()
         {
-            if (this.inProcess)
+            if (this.inProcess != 0)
                 return;
 
-            lock (lockObj)
-            {
-                if (this.inProcess)
-                    return;
-
-                this.inProcess = true;
-            }
+            //置换标识, 代表 RunLoop 正在执行
+            Interlocked.Exchange(ref this.inProcess, 1);
 
             Task.Factory.StartNew(async () =>
             {
                 await this.RunLoop();
-                this.inProcess = false;
+                //转换标识, 代表 RunLoop 已经执行完毕
+                Interlocked.Exchange(ref this.inProcess, 0);
             }, TaskCreationOptions.LongRunning | TaskCreationOptions.PreferFairness);
         }
 
@@ -239,7 +236,7 @@ namespace AsNum.Throttle
         /// <returns></returns>
         private async Task RunLoop()
         {
-            while (!this.tsks.IsEmpty)
+            while (!this.tskQueue.IsEmpty)
             {
                 await this.Counter.WaitMoment();
 
@@ -262,7 +259,7 @@ namespace AsNum.Throttle
                             var x = 0;
                             for (var i = 0; i < n; i++)
                             {
-                                if (tsks.TryDequeue(out Task? tsk) && tsk != null)
+                                if (tskQueue.TryDequeue(out Task? tsk) && tsk != null)
                                 {
                                     x++;
                                     try
@@ -302,6 +299,8 @@ namespace AsNum.Throttle
                         this.logger?.Log(null, e);
                     }
                 }
+
+                this.spinWait.SpinOnce();
             }
         }
 
@@ -601,11 +600,6 @@ namespace AsNum.Throttle
                         this.Counter.OnReset -= Counter_OnReset;
                         this.Counter.Dispose();
                     }
-
-                    //if (this.Updater != null && this.Updater is IAutoDispose)
-                    //{
-                    //    this.Updater.CfgChanged -= Updater_CfgChanged;
-                    //}
 
                     this.semaphoreSlim?.Dispose();
                 }

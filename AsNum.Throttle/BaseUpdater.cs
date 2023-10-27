@@ -39,7 +39,7 @@ namespace AsNum.Throttle
         /// <summary>
         /// 
         /// </summary>
-        private readonly List<IUpdate> subscribers = new List<IUpdate>();
+        private readonly List<IUpdate> subscribers = new();
 
         /// <summary>
         /// 通知更新

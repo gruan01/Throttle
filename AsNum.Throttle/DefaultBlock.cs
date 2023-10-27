@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Concurrent;
-using System.Data.OleDb;
 using System.Threading.Tasks;
 
 namespace AsNum.Throttle
@@ -69,10 +68,7 @@ namespace AsNum.Throttle
         /// </summary>
         protected override void InnerDispose()
         {
-            if (this.block != null)
-            {
-                this.block.Dispose();
-            }
+            this.block?.Dispose();
         }
 
 
