@@ -53,14 +53,14 @@ namespace AsNum.Throttle
         /// <summary>
         /// 
         /// </summary>
-        public abstract ValueTask<int> CurrentCount();
+        public abstract ValueTask<uint> CurrentCount();
 
 
         /// <summary>
         /// 
         /// </summary>
         /// <returns></returns>
-        public abstract ValueTask<int> IncrementCount(int n);
+        public abstract ValueTask<uint> IncrementCount(uint n);
 
 
         /// <summary>

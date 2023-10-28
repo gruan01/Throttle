@@ -7,13 +7,13 @@ namespace AsNum.Throttle
     /// <summary>
     /// 用 BlockingCollection 实现的阻止队列. 不能跨进程
     /// </summary>
-    public sealed class DefaultBlock : BaseBlock, IAutoDispose
+    public sealed class DefaultBlock : BaseBlock, IAutoDispose, IDisposable
     {
 
         /// <summary>
         /// 
         /// </summary>
-        private BlockingCollection<byte>? block;
+        private BlockingCollection<byte> block = new();
 
         /// <summary>
         /// 
@@ -37,14 +37,12 @@ namespace AsNum.Throttle
         /// <summary>
         /// 
         /// </summary>
-        internal override Task Acquire()
+        internal override void Acquire()
         {
-            if (this.LockTimeout.HasValue)
-                this.block!.TryAdd(0, this.LockTimeout.Value);
+            if (this.LockTimeout is not null)
+                this.block.TryAdd(0, this.LockTimeout.Value);
             else
-                this.block!.Add(0);
-
-            return Task.CompletedTask;
+                this.block.Add(0);
         }
 
 
@@ -52,14 +50,12 @@ namespace AsNum.Throttle
         /// <summary>
         /// 
         /// </summary>
-        internal override Task Release()
+        internal override void Release()
         {
-            if (this.LockTimeout.HasValue)
-                this.block!.TryTake(out _, this.LockTimeout.Value);
+            if (this.LockTimeout is not null)
+                this.block.TryTake(out _, this.LockTimeout.Value);
             else
-                this.block!.Take();
-
-            return Task.CompletedTask;
+                this.block.Take();
         }
 
 
@@ -72,5 +68,34 @@ namespace AsNum.Throttle
         }
 
 
+
+        #region dispose
+
+        /// <summary>
+        /// 
+        /// </summary>
+        ~DefaultBlock()
+        {
+            this.Dispose(false);
+        }
+
+
+        private bool isDisposed = false;
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="flag"></param>
+        private void Dispose(bool flag)
+        {
+            if (!isDisposed)
+            {
+                if (flag)
+                {
+                    this.block?.Dispose();
+                }
+                isDisposed = true;
+            }
+        }
+        #endregion
     }
 }

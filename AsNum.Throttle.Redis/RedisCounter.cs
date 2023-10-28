@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading;
 using System.Threading.Tasks;
 using StackExchange.Redis;
 
@@ -51,6 +52,19 @@ namespace AsNum.Throttle.Redis
         /// <summary>
         /// 
         /// </summary>
+        private static readonly Random rnd = new Random();
+
+
+        /// <summary>
+        /// 用于随机等待, 如果不等待, 太消耗CPU.
+        /// 即然用到了限频, 而且用到了 RedisCounter 说明是多进程同时在运行, 频率一定不会太高,
+        /// 所以随机等待对请求速度影响不大.
+        /// </summary>
+        private readonly int rndSleepInMS = 5;
+
+        /// <summary>
+        /// 
+        /// </summary>
         /// <param name="connection"></param>
         /// <param name="batchCount">批大小; 为保证公平, 这个数字越小越好; 但是为了减少与 Redis 之间的通讯, 这个值越大越好.</param>
         /// /// <param name="rndSleepInMS">用于随机等待, 如果不等待, 太消耗CPU.</param>
@@ -85,7 +99,9 @@ namespace AsNum.Throttle.Redis
 
                 this.subscriber.Subscribe(KEY_EXPIRED_CHANNEL, (channel, value) =>
                 {
-                    if (value == this.countKey)
+                    var v = (string?)value;
+                    //if (value == this.countKey)
+                    if (string.Equals(v, this.countKey))
                     {
                         this.ResetFired();
                     }
@@ -93,20 +109,6 @@ namespace AsNum.Throttle.Redis
             }
         }
 
-
-
-        /// <summary>
-        /// 
-        /// </summary>
-        private static readonly Random rnd = new Random();
-
-
-        /// <summary>
-        /// 用于随机等待, 如果不等待, 太消耗CPU.
-        /// 即然用到了限频, 而且用到了 RedisCounter 说明是多进程同时在运行, 频率一定不会太高,
-        /// 所以随机等待对请求速度影响不大.
-        /// </summary>
-        private readonly int rndSleepInMS = 5;
 
         /// <summary>
         /// 随机待待0~2 毫秒, 拯救CPU
@@ -123,22 +125,22 @@ namespace AsNum.Throttle.Redis
         /// 
         /// </summary>
         /// <returns></returns>
-        public override async ValueTask<int> CurrentCount()
+        public override async ValueTask<uint> CurrentCount()
         {
-            return await this.db.StringGetAsync(this.countKey, CommandFlags.DemandMaster).ToInt(0);
+            return await this.db.StringGetAsync(this.countKey, CommandFlags.DemandMaster).ToUInt(0);
         }
 
         /// <summary>
         /// 
         /// </summary>
         /// <returns></returns>
-        public override async ValueTask<int> IncrementCount(int a)
+        public override async ValueTask<uint> IncrementCount(uint a)
         {
             //没有找到原因, TTL 总是有 -1 的情况...
             await this.CheckTTL();
             try
             {
-                var n = (int)await this.db.StringIncrementAsync(this.countKey, a, flags: CommandFlags.DemandMaster);
+                var n = (uint)await this.db.StringIncrementAsync(this.countKey, a, flags: CommandFlags.DemandMaster);
                 if (n == a || n <= 1)
                 {
                     //只有第一次时, 才对该值做 TTL
@@ -163,7 +165,7 @@ namespace AsNum.Throttle.Redis
             try
             {
                 var t = await this.db.KeyTimeToLiveAsync(this.countKey, CommandFlags.DemandMaster);
-                if (t == null)
+                if (t is null)
                 {
                     await this.db.KeyDeleteAsync(this.countKey, CommandFlags.DemandMaster);
                 }

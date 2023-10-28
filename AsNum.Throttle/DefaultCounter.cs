@@ -13,7 +13,7 @@ namespace AsNum.Throttle
         /// <summary>
         /// 
         /// </summary>
-        private volatile int _currentCount;
+        private volatile uint _currentCount;
 
 
         /// <summary>
@@ -33,7 +33,9 @@ namespace AsNum.Throttle
         private int avg = 0;
 
 
-        private readonly Random rnd = new Random();
+        private readonly Random rnd = new();
+
+
 
         /// <summary>
         /// 
@@ -82,7 +84,9 @@ namespace AsNum.Throttle
             {
                 var n = rnd.Next(0, this.avg);
                 if (n > 0)
+                {
                     await Task.Delay(n);
+                }
             }
 
         }
@@ -92,19 +96,19 @@ namespace AsNum.Throttle
         /// 
         /// </summary>
         /// <returns></returns>
-        public override ValueTask<int> CurrentCount()
+        public override ValueTask<uint> CurrentCount()
         {
-            return new ValueTask<int>(this._currentCount);
+            return new ValueTask<uint>(this._currentCount);
         }
 
         /// <summary>
         /// 
         /// </summary>
         /// <returns></returns>
-        public override ValueTask<int> IncrementCount(int n)
+        public override ValueTask<uint> IncrementCount(uint n)
         {
             var a = Interlocked.Add(ref this._currentCount, n);
-            return new ValueTask<int>(a);
+            return new ValueTask<uint>(a);
         }
 
 
@@ -135,5 +139,35 @@ namespace AsNum.Throttle
         {
             this.timer?.Dispose();
         }
+
+
+        #region dispose
+
+        /// <summary>
+        /// 
+        /// </summary>
+        ~DefaultCounter()
+        {
+            this.Dispose(false);
+        }
+
+
+        private bool isDisposed = false;
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="flag"></param>
+        private void Dispose(bool flag)
+        {
+            if (!isDisposed)
+            {
+                if (flag)
+                {
+                    this.timer?.Dispose();
+                }
+                isDisposed = true;
+            }
+        }
+        #endregion
     }
 }

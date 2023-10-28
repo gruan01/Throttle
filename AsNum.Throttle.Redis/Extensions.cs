@@ -1,7 +1,6 @@
-﻿using System;
-using System.Collections;
+﻿using StackExchange.Redis;
+using System;
 using System.Threading.Tasks;
-using StackExchange.Redis;
 
 namespace AsNum.Throttle.Redis
 {
@@ -16,21 +15,31 @@ namespace AsNum.Throttle.Redis
         /// <param name="v"></param>
         /// <param name="defaultValue"></param>
         /// <returns></returns>
-        internal static async Task<int> ToInt(this Task<RedisValue> v, int defaultValue)
+        internal static async ValueTask<int> ToInt(this Task<RedisValue> v, int defaultValue)
         {
             try
             {
                 var vv = await v;
-                if (vv.TryParse(out int val))
-                    return val;
+                return Convert.ToInt32(vv);
             }
             catch
             {
-
+                return defaultValue;
             }
-            return defaultValue;
         }
 
+        internal static async ValueTask<uint> ToUInt(this Task<RedisValue> v, uint defaultValue)
+        {
+            try
+            {
+                var vv = await v;
+                return Convert.ToUInt32(vv);
+            }
+            catch
+            {
+                return defaultValue;
+            }
+        }
 
         /// <summary>
         /// 
@@ -42,14 +51,12 @@ namespace AsNum.Throttle.Redis
         {
             try
             {
-                if (v.TryParse(out int val))
-                    return val;
+                return Convert.ToInt32(v);
             }
             catch
             {
-
+                return defaultValue;
             }
-            return defaultValue;
         }
 
 
@@ -59,29 +66,19 @@ namespace AsNum.Throttle.Redis
         /// <param name="v"></param>
         /// <param name="defaultValue"></param>
         /// <returns></returns>
-        internal static async Task<double> ToDouble(this Task<RedisValue> v, double defaultValue)
+        internal static async ValueTask<double> ToDouble(this Task<RedisValue> v, double defaultValue)
         {
             var vv = await v;
-            if (vv.TryParse(out double val))
-                return val;
-
-            return defaultValue;
+            try
+            {
+                return Convert.ToDouble(vv);
+            }
+            catch
+            {
+                return defaultValue;
+            }
         }
 
-
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <param name="v"></param>
-        /// <param name="defaultValue"></param>
-        /// <returns></returns>
-        internal static double ToDouble(this RedisValue v, double defaultValue)
-        {
-            if (v.TryParse(out double val))
-                return val;
-
-            return defaultValue;
-        }
 
         /// <summary>
         /// 
