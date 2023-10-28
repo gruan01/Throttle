@@ -489,7 +489,8 @@ namespace AsNum.Throttle
         {
             var t = new WrapFuncTask<T>(this.Wrap(func), cancellation, creationOptions);
             this.Enqueue(t);
-            return t.Result;
+            //return t.Result;
+            return t.Unwrap();
         }
 
 
@@ -506,7 +507,8 @@ namespace AsNum.Throttle
         {
             var t = new WrapFuncTask<T>(this.Wrap(func), state, cancellation, creationOptions);
             this.Enqueue(t);
-            return t.Result;
+            //return t.Result;
+            return t.Unwrap();
         }
         #endregion
 

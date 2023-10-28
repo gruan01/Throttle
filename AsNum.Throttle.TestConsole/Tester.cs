@@ -41,10 +41,10 @@ namespace AsNum.Throttle.CoreTest
                 //Task<Task>
                 //var tsk1 = ts.Execute(() => AA(i));
                 ////参数绑定
-                var tsk2 = this.TS.Execute((o) => AA((int)o), i);
+                //var tsk2 = this.TS.Execute((o) => AA((int)o), i);
 
                 ////Task<Task<T>>
-                //var tsk3 = ts.Execute(() => BB(i));
+                var tsk3 = this.TS.Execute(() => BB(i));
                 ////参数绑定
                 //var tsk4 = ts.Execute((o) => BB((int)o), i);
 
@@ -54,8 +54,8 @@ namespace AsNum.Throttle.CoreTest
                 //var tsk6 = ts.Execute((o) => CC((int)o), i);
 
                 //tsks.Add(tsk1);
-                tsks.Add(tsk2.Unwrap());
-                //tsks.Add(tsk3);
+                //tsks.Add(tsk2.Unwrap());
+                tsks.Add(tsk3);
                 //tsks.Add(tsk4);
                 //tsks.Add(tsk5);
                 //tsks.Add(tsk6);
