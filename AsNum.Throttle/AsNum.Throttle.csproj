@@ -7,10 +7,10 @@
 		<PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
 		<PackageTags>AsNum</PackageTags>
 		<GenerateAssemblyInfo>true</GenerateAssemblyInfo>
-		<PackageVersion>2.1.0.1</PackageVersion>
-		<AssemblyVersion>2.1.0.1</AssemblyVersion>
-		<FileVersion>2.1.0.1</FileVersion>
-		<Version>2.1.0.1</Version>
+		<PackageVersion>2.1.0.2</PackageVersion>
+		<AssemblyVersion>2.1.0.2</AssemblyVersion>
+		<FileVersion>2.1.0.2</FileVersion>
+		<Version>2.1.0.2</Version>
 		<Authors>xling</Authors>
 		<LangVersion>11</LangVersion>
 		<Description>Action / Func throttle in a period</Description>
