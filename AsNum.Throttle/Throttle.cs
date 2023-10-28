@@ -32,10 +32,10 @@ namespace AsNum.Throttle
 
         #region 核心
 
-        ///// <summary>
-        ///// 
-        ///// </summary>
-        //public string ThrottleName { get; }
+        /// <summary>
+        /// 
+        /// </summary>
+        public string ThrottleName { get; }
 
         /// <summary>
         /// 阻塞器
@@ -109,7 +109,7 @@ namespace AsNum.Throttle
             if (concurrentCount.HasValue)
                 this.semaphoreSlim = new SemaphoreSlim(concurrentCount.Value, concurrentCount.Value);
 
-            //this.ThrottleName = throttleName;
+            this.ThrottleName = throttleName;
 
             var throttleID = Guid.NewGuid().ToString("N");
 
