@@ -82,9 +82,8 @@ namespace AsNum.Throttle
         /// 
         /// </summary>
         /// <returns></returns>
-        public virtual Task WaitMoment()
+        public virtual void WaitMoment()
         {
-            return Task.CompletedTask;
         }
 
         /// <summary>

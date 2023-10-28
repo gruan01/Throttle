@@ -32,10 +32,10 @@ namespace AsNum.Throttle
 
         #region 核心
 
-        /// <summary>
-        /// 
-        /// </summary>
-        public string ThrottleName { get; }
+        ///// <summary>
+        ///// 
+        ///// </summary>
+        //public string ThrottleName { get; }
 
         /// <summary>
         /// 阻塞器
@@ -109,7 +109,7 @@ namespace AsNum.Throttle
             if (concurrentCount.HasValue)
                 this.semaphoreSlim = new SemaphoreSlim(concurrentCount.Value, concurrentCount.Value);
 
-            this.ThrottleName = throttleName;
+            //this.ThrottleName = throttleName;
 
             var throttleID = Guid.NewGuid().ToString("N");
 
@@ -250,10 +250,14 @@ namespace AsNum.Throttle
                 // Take 不到， 会一直停留在这里。
                 _ = this.tskBlock.Take(/*this.cts.Token*/);
 
-                var pass = false;
+                //var pass = false;
+                //本次总共执行了几个 tsk
+                var x = 0U;
 
                 try
                 {
+
+
                     //先锁, 在获取计数,
                     //如果先获取计数, 在锁, 会造成超频的情况.
                     if (await this.Counter.TryLock())
@@ -268,8 +272,8 @@ namespace AsNum.Throttle
                             //可以插入几个. 
                             var n = Math.Min(this.Counter.BatchCount, space);
 
-                            //本次总共执行了几个 tsk
-                            var x = 0U;
+                            ////本次总共执行了几个 tsk
+                            //var x = 0U;
 
                             for (var i = 0; i < n; i++)
                             {
@@ -284,15 +288,19 @@ namespace AsNum.Throttle
                                     break;
                             }
 
-                            if (x > 0)
-                            {
-                                await this.Counter.IncrementCount(x);
-                                pass = true;
-                            }
+                            //if (x > 0)
+                            //{
+                            //    await this.Counter.IncrementCount(x);
+                            //    pass = true;
+                            //}
                         }
                     }
 
-                    if (!pass)
+                    if (x > 0)
+                    {
+                        await this.Counter.IncrementCount(x);
+                    }
+                    else
                     {
                         //如果没有获得锁, 或者空间不够， 还要把 阻塞数 还回去。
                         //因为是无上限的 BlockingCollection, 所以这里不会被阻塞
@@ -316,7 +324,7 @@ namespace AsNum.Throttle
                     }
                 }
 
-                await this.Counter.WaitMoment();
+                this.Counter.WaitMoment();
             }
         }
 

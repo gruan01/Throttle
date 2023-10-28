@@ -39,10 +39,10 @@ namespace AsNum.Throttle
         /// </summary>
         internal override void Acquire()
         {
-            if (this.LockTimeout is not null)
-                this.block.TryAdd(0, this.LockTimeout.Value);
-            else
+            if (this.LockTimeout is null)
                 this.block.Add(0);
+            else
+                this.block.TryAdd(0, this.LockTimeout.Value);
         }
 
 
@@ -52,10 +52,10 @@ namespace AsNum.Throttle
         /// </summary>
         internal override void Release()
         {
-            if (this.LockTimeout is not null)
-                this.block.TryTake(out _, this.LockTimeout.Value);
-            else
+            if (this.LockTimeout is null)
                 this.block.Take();
+            else
+                this.block.TryTake(out _, this.LockTimeout.Value);
         }
 
 

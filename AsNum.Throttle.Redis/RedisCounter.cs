@@ -52,7 +52,7 @@ namespace AsNum.Throttle.Redis
         /// <summary>
         /// 
         /// </summary>
-        private static readonly Random rnd = new Random();
+        private static readonly Random rnd = new();
 
 
         /// <summary>
@@ -114,10 +114,12 @@ namespace AsNum.Throttle.Redis
         /// 随机待待0~2 毫秒, 拯救CPU
         /// </summary>
         /// <returns></returns>
-        public override async Task WaitMoment()
+        public override void WaitMoment()
         {
             var t = rnd.Next(1, this.rndSleepInMS);
-            await Task.Delay(t);
+            //await Task.Delay(t);
+            //return Task.CompletedTask;
+            SpinWait.SpinUntil(() => false, t);
         }
 
 

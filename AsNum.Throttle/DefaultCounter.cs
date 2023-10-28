@@ -78,14 +78,15 @@ namespace AsNum.Throttle
         /// 
         /// </summary>
         /// <returns></returns>
-        public override async Task WaitMoment()
+        public override void WaitMoment()
         {
             if (this.avg > 1)
             {
                 var n = rnd.Next(0, this.avg);
                 if (n > 0)
                 {
-                    await Task.Delay(n);
+                    //await Task.Delay(n);
+                    SpinWait.SpinUntil(() => false, n);
                 }
             }
 
