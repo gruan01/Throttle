@@ -74,6 +74,11 @@ namespace AsNum.Throttle
         /// <summary>
         /// 
         /// </summary>
+        private readonly CancellationToken token;
+
+        /// <summary>
+        /// 
+        /// </summary>
         /// <param name="period">周期</param>
         /// <param name="frequency">周期内最大允许执行次数</param>
         /// <param name="block"></param>
@@ -127,6 +132,9 @@ namespace AsNum.Throttle
             this.Updater.Subscribe(this.Counter);
             this.Updater.Subscribe(this.Blocker);
             this.Updater.SetUp(throttleName, throttleID, period, frequency, logger);
+
+
+            this.token = this.cts.Token;
 
             this.StartProcess();
         }
@@ -216,7 +224,7 @@ namespace AsNum.Throttle
             Task.Factory.StartNew(async () =>
             {
                 await RunLoop();
-            }, this.cts.Token, TaskCreationOptions.LongRunning, TaskScheduler.Default);
+            }, this.token, TaskCreationOptions.LongRunning, TaskScheduler.Default);
         }
 
         /// <summary>
@@ -243,9 +251,9 @@ namespace AsNum.Throttle
         /// <returns></returns>
         private async Task RunLoop()
         {
-
-            while (!this.cts.IsCancellationRequested)
+            while (!token.IsCancellationRequested)
             {
+
                 //tskBlock 用于防止队列中没有数据， 导致的空转，耗费CPU
                 // Take 不到， 会一直停留在这里。
                 _ = this.tskBlock.Take(/*this.cts.Token*/);
