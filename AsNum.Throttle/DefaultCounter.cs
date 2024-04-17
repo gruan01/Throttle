@@ -27,15 +27,22 @@ namespace AsNum.Throttle
         /// </summary>
         private Timer? timer;
 
+        ///// <summary>
+        ///// 
+        ///// </summary>
+        //private int avg = 0;
+
+
+        //private readonly Random rnd = new();
+
         /// <summary>
-        /// 
+        /// 等待时间。默认 10 微秒 慢了影响执行速度，快了会占用CPU，需要自己找个平衡点。
         /// </summary>
-        private int avg = 0;
-
-
-        private readonly Random rnd = new();
-
-
+#if NET8_0_OR_GREATER
+        public TimeSpan WaitTime { get; set; } = TimeSpan.FromMicroseconds(10);
+#else
+        public TimeSpan WaitTime { get; set; } = new TimeSpan(100);// TimeSpan.FromMilliseconds(1);
+#endif
 
         /// <summary>
         /// 
@@ -55,11 +62,12 @@ namespace AsNum.Throttle
                 this.timer?.Dispose();
                 this.timer = new Timer(new TimerCallback(Timer_Elapsed), null, this.Period, this.Period);
             }
-            //一般如果是限制执行频率的， 频率根本不会太大。
-            //如果不暂停的话， 会一直执行循环，导致 CPU 空转浪费。
-            //假设1秒钟允许执行60次，合16毫秒执行一次，
-            //如果加上暂停，应该是 1 秒钟内 60次执行，60次暂停， 合 8 毫秒一次。
-            this.avg = (int)this.Period.TotalMilliseconds / this.Frequency / 2;
+
+            ////一般如果是限制执行频率的， 频率根本不会太大。
+            ////如果不暂停的话， 会一直执行循环，导致 CPU 空转浪费。
+            ////假设1秒钟允许执行60次，合16毫秒执行一次，
+            ////如果加上暂停，应该是 1 秒钟内 60次执行，60次暂停， 合 8 毫秒一次。
+            //this.avg = (int)this.Period.TotalMilliseconds / this.Frequency / 2;
         }
 
 
@@ -80,16 +88,20 @@ namespace AsNum.Throttle
         /// <returns></returns>
         public override void WaitMoment()
         {
-            if (this.avg > 1)
-            {
-                var n = rnd.Next(0, this.avg);
-                if (n > 0)
-                {
-                    //await Task.Delay(n);
-                    SpinWait.SpinUntil(() => false, n);
-                }
-            }
+            //if (this.avg > 1)
+            //{
+            //    var n = rnd.Next(0, this.avg);
+            //    if (n > 0)
+            //    {
+            //        //await Task.Delay(n);
+            //        SpinWait.SpinUntil(() => false, n);
+            //    }
+            //}
 
+            if (this.WaitTime > TimeSpan.Zero)
+            {
+                SpinWait.SpinUntil(() => false, this.WaitTime);
+            }
         }
 
 

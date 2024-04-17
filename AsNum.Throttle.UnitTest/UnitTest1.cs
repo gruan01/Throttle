@@ -9,6 +9,9 @@ namespace AsNum.Throttle.UnitTest
         [Fact]
         public async void DefaultUpdaterTest()
         {
+            var a = new TimeSpan(100);
+            var b = TimeSpan.FromMicroseconds(10);
+
             var throttle = new Throttle("test", TimeSpan.FromMinutes(1), 1);
             var updater = throttle.Updater;
 

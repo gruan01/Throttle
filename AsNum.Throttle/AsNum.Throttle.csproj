@@ -1,16 +1,16 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
-		<TargetFrameworks>net6</TargetFrameworks>
+		<TargetFrameworks>net6;net8</TargetFrameworks>
 		<GeneratePackageOnBuild>false</GeneratePackageOnBuild>
 		<IncludeSymbols>true</IncludeSymbols>
 		<PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
 		<PackageTags>AsNum</PackageTags>
 		<GenerateAssemblyInfo>true</GenerateAssemblyInfo>
-		<PackageVersion>2.1.0.3</PackageVersion>
-		<AssemblyVersion>2.1.0.3</AssemblyVersion>
-		<FileVersion>2.1.0.3</FileVersion>
-		<Version>2.1.0.3</Version>
+		<PackageVersion>2.1.0.4</PackageVersion>
+		<AssemblyVersion>2.1.0.4</AssemblyVersion>
+		<FileVersion>2.1.0.4</FileVersion>
+		<Version>2.1.0.4</Version>
 		<Authors>xling</Authors>
 		<LangVersion>11</LangVersion>
 		<Description>Action / Func throttle in a period</Description>

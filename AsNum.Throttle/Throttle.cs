@@ -40,12 +40,16 @@ namespace AsNum.Throttle
         /// <summary>
         /// 阻塞器
         /// </summary>
+#pragma warning disable IDISP008 // Don't assign member with injected and created disposables
         public BaseBlock Blocker { get; }
+#pragma warning restore IDISP008 // Don't assign member with injected and created disposables
 
         /// <summary>
         /// 计数器
         /// </summary>
+#pragma warning disable IDISP008 // Don't assign member with injected and created disposables
         public BaseCounter Counter { get; }
+#pragma warning restore IDISP008 // Don't assign member with injected and created disposables
 
         /// <summary>
         /// 配置更新器

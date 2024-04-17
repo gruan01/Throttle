@@ -23,10 +23,10 @@ namespace AsNum.Throttle.CoreTest
         /// <param name="n"></param>
         public Tester(int boundry, TimeSpan period, int batchCount)
         {
-            this.Conn = ConnectionMultiplexer.Connect("localhost:6379");
+            //this.Conn = ConnectionMultiplexer.Connect("localhost:6379");
 
-            this.Counter = new RedisCounter(this.Conn, batchCount);
-            this.TS = new Throttle("test", period, boundry, counter: this.Counter, concurrentCount: 2);
+            //this.Counter = new RedisCounter(this.Conn, batchCount);
+            this.TS = new Throttle("test", period, boundry,/* counter: this.Counter,*/ concurrentCount: 2);
             //this.TS = new Throttle("test", period, boundry);
             this.TS.OnPeriodElapsed += Ts_OnPeriodElapsed;
         }
@@ -39,12 +39,12 @@ namespace AsNum.Throttle.CoreTest
             for (var i = 0; i < n; i++)
             {
                 //Task<Task>
-                //var tsk1 = ts.Execute(() => AA(i));
+                var tsk1 = this.TS.Execute(() => AA(i));
                 ////参数绑定
                 //var tsk2 = this.TS.Execute((o) => AA((int)o), i);
 
                 ////Task<Task<T>>
-                var tsk3 = this.TS.Execute(() => BB(i));
+                //var tsk3 = this.TS.Execute(() => BB(i));
                 ////参数绑定
                 //var tsk4 = ts.Execute((o) => BB((int)o), i);
 
@@ -53,9 +53,9 @@ namespace AsNum.Throttle.CoreTest
                 ////参数绑定
                 //var tsk6 = ts.Execute((o) => CC((int)o), i);
 
-                //tsks.Add(tsk1);
+                tsks.Add(tsk1);
                 //tsks.Add(tsk2.Unwrap());
-                tsks.Add(tsk3);
+                //tsks.Add(tsk3);
                 //tsks.Add(tsk4);
                 //tsks.Add(tsk5);
                 //tsks.Add(tsk6);
@@ -79,7 +79,7 @@ namespace AsNum.Throttle.CoreTest
         private static async Task AA(int i)
         {
             //await Task.Delay(TimeSpan.FromSeconds(6));
-            await Task.Delay(TimeSpan.FromSeconds(1));
+            await Task.Delay(TimeSpan.FromSeconds(6));
             //Console.ForegroundColor = ConsoleColor.Red;
             Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff}\tAA:{i}");
             //Console.ResetColor();
