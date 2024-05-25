@@ -23,11 +23,12 @@ namespace AsNum.Throttle.CoreTest
         /// <param name="n"></param>
         public Tester(int boundry, TimeSpan period, int batchCount)
         {
-            //this.Conn = ConnectionMultiplexer.Connect("localhost:6379");
+            //this.TS = new Throttle("test", period, boundry,concurrentCount: 2);
 
-            //this.Counter = new RedisCounter(this.Conn, batchCount);
-            this.TS = new Throttle("test", period, boundry,/* counter: this.Counter,*/ concurrentCount: 2);
-            //this.TS = new Throttle("test", period, boundry);
+            this.Conn = ConnectionMultiplexer.Connect("localhost:6379");
+            this.Counter = new RedisCounter(this.Conn, batchCount);
+            this.TS = new Throttle("test", period, boundry, counter: this.Counter, concurrentCount: 2);
+
             this.TS.OnPeriodElapsed += Ts_OnPeriodElapsed;
         }
 
@@ -39,7 +40,7 @@ namespace AsNum.Throttle.CoreTest
             for (var i = 0; i < n; i++)
             {
                 //Task<Task>
-                var tsk1 = this.TS.Execute(() => AA(i));
+                var tsk1 = this.TS.Execute((o) => AA((int)o), i);
                 ////参数绑定
                 //var tsk2 = this.TS.Execute((o) => AA((int)o), i);
 
@@ -79,7 +80,7 @@ namespace AsNum.Throttle.CoreTest
         private static async Task AA(int i)
         {
             //await Task.Delay(TimeSpan.FromSeconds(6));
-            await Task.Delay(TimeSpan.FromSeconds(6));
+            //await Task.Delay(TimeSpan.FromSeconds(6));
             //Console.ForegroundColor = ConsoleColor.Red;
             Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff}\tAA:{i}");
             //Console.ResetColor();
