@@ -163,22 +163,12 @@ namespace AsNum.Throttle
         /// <param name="task"></param>
         private void Unwrap(Task task)
         {
-            Task _tsk;
-            // 这里对应的是 Throttle.Execute(Action)
-            if (task is Task<Task> t)
-            {
-                //如果 task 是 task 的嵌套, 需要先解包装 
-                _tsk = t.Unwrap();
-            }
-            //Task<Task<T>> 无法通过 is 来判断, 这里用 IUnwrap 来包装一下
-            else if (task is IUnwrap tt)
-            {
-                _tsk = tt.GetUnwrapped();
-            }
-            else
-            {
-                _tsk = task;
-            }
+            var _tsk = task is Task<Task> tt
+                            ? tt.Unwrap()
+                            : (task is IUnwrap wt
+                                    ? wt.GetUnwrapped()
+                                    : task
+                                );
 
             _tsk.ContinueWith(tt =>
             {
@@ -218,7 +208,8 @@ namespace AsNum.Throttle
 
             //占用一个空间后, 才能将任务插入队列
             this.tskQueue.Enqueue(task);
-            //同时给阻塞队列加一个， 使Take 得以执行。
+
+            //同时给阻塞队列加一个， 使 RunLoop 循环 得以执行。
             this.tskBlock.Add(0);
         }
 
@@ -263,7 +254,7 @@ namespace AsNum.Throttle
 
                 //tskBlock 用于防止队列中没有数据， 导致的空转，耗费CPU
                 // Take 不到， 会一直停留在这里。
-                _ = this.tskBlock.Take();
+                _ = this.tskBlock.Take(token);
 
                 //var pass = false;
                 //本次总共执行了几个 tsk
@@ -366,13 +357,13 @@ namespace AsNum.Throttle
         /// <returns></returns>
         private Func<object?, T> Wrap<T>(Func<object?, T> org)
         {
-            if (this.semaphoreSlim != null)
+            if (this.semaphoreSlim is not null)
             {
                 return (o) =>
                 {
+                    this.semaphoreSlim.Wait();
                     try
                     {
-                        this.semaphoreSlim.Wait();
                         return org.Invoke(o);
                     }
                     finally
@@ -393,13 +384,13 @@ namespace AsNum.Throttle
         /// <returns></returns>
         private Func<T> Wrap<T>(Func<T> org)
         {
-            if (this.semaphoreSlim != null)
+            if (this.semaphoreSlim is not null)
             {
                 return () =>
                 {
+                    this.semaphoreSlim.Wait();
                     try
                     {
-                        this.semaphoreSlim.Wait();
                         return org.Invoke();
                     }
                     finally
@@ -420,13 +411,13 @@ namespace AsNum.Throttle
         /// <returns></returns>
         private Action Wrap(Action org)
         {
-            if (this.semaphoreSlim != null)
+            if (this.semaphoreSlim is not null)
             {
                 return () =>
                 {
+                    this.semaphoreSlim.Wait();
                     try
                     {
-                        this.semaphoreSlim.Wait();
                         org.Invoke();
                     }
                     finally
@@ -447,13 +438,13 @@ namespace AsNum.Throttle
         /// <returns></returns>
         private Action<T> Wrap<T>(Action<T> org)
         {
-            if (this.semaphoreSlim != null)
+            if (this.semaphoreSlim is not null)
             {
                 return (o) =>
                 {
+                    this.semaphoreSlim.Wait();
                     try
                     {
-                        this.semaphoreSlim.Wait();
                         org.Invoke(o);
                     }
                     finally

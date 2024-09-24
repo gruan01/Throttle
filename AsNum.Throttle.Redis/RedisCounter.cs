@@ -18,7 +18,7 @@ namespace AsNum.Throttle.Redis
         /// <summary>
         /// 
         /// </summary>
-        private static readonly RedisChannel KEY_EXPIRED_CHANNEL = new RedisChannel("__keyevent@0__:expired", RedisChannel.PatternMode.Auto);
+        private static readonly RedisChannel KEY_EXPIRED_CHANNEL = new("__keyevent@0__:expired", RedisChannel.PatternMode.Auto);
 
 
         /// <summary>
