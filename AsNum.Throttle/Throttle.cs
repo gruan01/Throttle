@@ -21,11 +21,6 @@ namespace AsNum.Throttle
         /// </summary>
         private readonly ConcurrentQueue<Task> tskQueue = new();
 
-        /// <summary>
-        /// 用于观察任务队列中是否有数据。
-        /// </summary>
-        private readonly BlockingCollection<byte> tskBlock = new();
-
         #endregion
 
 
@@ -64,10 +59,10 @@ namespace AsNum.Throttle
         private readonly ILogger? logger;
 
 
-        /// <summary>
-        /// 用于控制并发数
-        /// </summary>
-        private readonly SemaphoreSlim? semaphoreSlim = null;
+        ///// <summary>
+        ///// 用于控制并发数
+        ///// </summary>
+        //private readonly SemaphoreSlim? semaphoreSlim = null;
 
 
         /// <summary>
@@ -88,7 +83,7 @@ namespace AsNum.Throttle
         /// <param name="block"></param>
         /// <param name="counter"></param>
         /// <param name="lockTimeout">避免因为客户端失去连接而引起的死锁</param>
-        /// <param name="concurrentCount">并发数</param>
+        /// <param name="concurrentCount">并发数, 废弃，不在使用</param>
         /// <param name="logger"></param>
         /// <param name="updater">用于更新周期/频率</param>
         /// <param name="throttleName">应该是一个唯一的字符串, 这个参数做为 Redis 的 key 的一部份, 因此要符合 redis key 的规则</param>
@@ -114,9 +109,6 @@ namespace AsNum.Throttle
 
             if (concurrentCount.HasValue && concurrentCount <= 0)
                 throw new ArgumentException($"{nameof(concurrentCount)} 无效");
-
-            if (concurrentCount.HasValue)
-                this.semaphoreSlim = new SemaphoreSlim(concurrentCount.Value, concurrentCount.Value);
 
             this.ThrottleName = throttleName;
 
@@ -163,18 +155,19 @@ namespace AsNum.Throttle
         /// <param name="task"></param>
         private void Unwrap(Task task)
         {
+            //var _tsk = task is Task<Task> tt
+            //                ? tt.Unwrap()
+            //                : (task is IUnwrap wt
+            //                        ? wt.GetUnwrapped()
+            //                        : task
+            //                    );
+
             var _tsk = task is Task<Task> tt
                             ? tt.Unwrap()
-                            : (task is IUnwrap wt
-                                    ? wt.GetUnwrapped()
-                                    : task
-                                );
+                            : task;
 
             _tsk.ContinueWith(tt =>
             {
-                //RunLoop 循环阻止锁，如果不放到这，就要放到 RunLoop 里去。
-                //放到这，会因为线程切换，稍有延迟。
-                //this.tskBlock.TryTake(out _);
                 try
                 {
                     //当任务执行完时, 才能阻止队列的一个空间出来,供下一个任务进入
@@ -208,9 +201,6 @@ namespace AsNum.Throttle
 
             //占用一个空间后, 才能将任务插入队列
             this.tskQueue.Enqueue(task);
-
-            //同时给阻塞队列加一个， 使 RunLoop 循环 得以执行。
-            this.tskBlock.Add(0);
         }
 
 
@@ -251,19 +241,16 @@ namespace AsNum.Throttle
         {
             while (!token.IsCancellationRequested)
             {
+                if (!SpinWait.SpinUntil(() => !tskQueue.IsEmpty, 100))
+                {
+                    continue;
+                }
 
-                //tskBlock 用于防止队列中没有数据， 导致的空转，耗费CPU
-                // Take 不到， 会一直停留在这里。
-                _ = this.tskBlock.Take(token);
-
-                //var pass = false;
                 //本次总共执行了几个 tsk
                 var x = 0U;
 
                 try
                 {
-
-
                     //先锁, 在获取计数,
                     //如果先获取计数, 在锁, 会造成超频的情况.
                     if (await this.Counter.TryLock())
@@ -278,50 +265,25 @@ namespace AsNum.Throttle
                             //可以插入几个. 
                             var n = Math.Min(this.Counter.BatchCount, space);
 
-                            ////本次总共执行了几个 tsk
-                            //var x = 0U;
-
                             for (var i = 0; i < n; i++)
                             {
                                 if (tskQueue.TryDequeue(out Task? tsk) && tsk != null)
                                 {
                                     x++;
                                     this.StartTask(tsk);
-
-                                    //因为上面已经 Take 过了，这里在 Take， 会造成执行一个 Task, 去掉了两个占位符。
-                                    //会导致压入的任务,因为被上面的 tskBlock.Take 阻塞，进不到这里，而导致 Task 不被执行。。。
-                                    //但是，如果是批量的，就会造成多运转N-1次。。。
-
-                                    ////任务队列减少一个，阻塞队列也要相应的减少一个。
-                                    //this.tskBlock.TryTake(out _);
                                 }
                                 else
+                                {
                                     break;
+                                }
+
                             }
                         }
                     }
 
-                    if (x > 1)
+                    if (x > 0)
                     {
-                        //如果不放到这，需要放到 Unwrap 的 ContinueWith 里去。
-                        //大于1时，说明是批量执行了。
-                        //从1开始，因为上面已经 Take 过了一个了。
-                        for (var i = 1; i < x; i++)
-                            this.tskBlock.TryTake(out _);
-
                         await this.Counter.IncrementCount(x);
-                    }
-                    else if (x > 0)
-                    {
-                        //进到这里，说明只执行了一个。
-                        await this.Counter.IncrementCount(x);
-                    }
-                    else
-                    {
-                        //进到这里，说明没有执行，没获取到锁。
-                        //如果没有获得锁, 或者空间不够， 还要把 阻塞数 还回去。
-                        //因为是无上限的 BlockingCollection, 所以这里不会被阻塞
-                        this.tskBlock.Add(0);
                     }
                 }
                 catch (Exception e)
@@ -348,117 +310,6 @@ namespace AsNum.Throttle
         #region execute
 
 
-        #region Wrap
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <param name="org"></param>
-        /// <returns></returns>
-        private Func<object?, T> Wrap<T>(Func<object?, T> org)
-        {
-            if (this.semaphoreSlim is not null)
-            {
-                return (o) =>
-                {
-                    this.semaphoreSlim.Wait();
-                    try
-                    {
-                        return org.Invoke(o);
-                    }
-                    finally
-                    {
-                        this.semaphoreSlim.Release();
-                    }
-                };
-            }
-            else
-                return org;
-        }
-
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <param name="org"></param>
-        /// <returns></returns>
-        private Func<T> Wrap<T>(Func<T> org)
-        {
-            if (this.semaphoreSlim is not null)
-            {
-                return () =>
-                {
-                    this.semaphoreSlim.Wait();
-                    try
-                    {
-                        return org.Invoke();
-                    }
-                    finally
-                    {
-                        this.semaphoreSlim.Release();
-                    }
-                };
-            }
-            else
-                return org;
-        }
-
-
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <param name="org"></param>
-        /// <returns></returns>
-        private Action Wrap(Action org)
-        {
-            if (this.semaphoreSlim is not null)
-            {
-                return () =>
-                {
-                    this.semaphoreSlim.Wait();
-                    try
-                    {
-                        org.Invoke();
-                    }
-                    finally
-                    {
-                        this.semaphoreSlim.Release();
-                    }
-                };
-            }
-            else
-                return org;
-        }
-
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <param name="org"></param>
-        /// <returns></returns>
-        private Action<T> Wrap<T>(Action<T> org)
-        {
-            if (this.semaphoreSlim is not null)
-            {
-                return (o) =>
-                {
-                    this.semaphoreSlim.Wait();
-                    try
-                    {
-                        org.Invoke(o);
-                    }
-                    finally
-                    {
-                        this.semaphoreSlim.Release();
-                    }
-                };
-            }
-            else
-                return org;
-        }
-        #endregion
-
-
         #region Func<T> / Func<object, T>
         /// <summary>
         /// 
@@ -470,7 +321,7 @@ namespace AsNum.Throttle
         /// <returns></returns>
         public Task<T> Execute<T>(Func<T> func, CancellationToken cancellation = default, TaskCreationOptions creationOptions = TaskCreationOptions.None)
         {
-            var t = new Task<T>(this.Wrap(func), cancellation, creationOptions);
+            var t = new Task<T>(func, cancellation, creationOptions);
             this.Enqueue(t);
             return t;
         }
@@ -486,7 +337,7 @@ namespace AsNum.Throttle
         /// <returns></returns>
         public Task<T> Execute<T>(Func<object?, T> func, object? state, CancellationToken cancellation = default, TaskCreationOptions creationOptions = TaskCreationOptions.None)
         {
-            var t = new Task<T>(this.Wrap(func), state, cancellation, creationOptions);
+            var t = new Task<T>(func, state, cancellation, creationOptions);
             this.Enqueue(t);
             return t;
         }
@@ -504,7 +355,8 @@ namespace AsNum.Throttle
         /// <returns></returns>
         public Task<T> Execute<T>(Func<Task<T>> func, CancellationToken cancellation = default, TaskCreationOptions creationOptions = TaskCreationOptions.None)
         {
-            var t = new WrapFuncTask<T>(this.Wrap(func), cancellation, creationOptions);
+            //var t = new WrapFuncTask<T>(func, cancellation, creationOptions);
+            var t = new Task<Task<T>>(func, cancellation, creationOptions);
             this.Enqueue(t);
             //return t.Result;
             return t.Unwrap();
@@ -522,7 +374,8 @@ namespace AsNum.Throttle
         /// <returns></returns>
         public Task<T> Execute<T>(Func<object?, Task<T>> func, object? state, CancellationToken cancellation = default, TaskCreationOptions creationOptions = TaskCreationOptions.None)
         {
-            var t = new WrapFuncTask<T>(this.Wrap(func), state, cancellation, creationOptions);
+            //var t = new WrapFuncTask<T>(func, state, cancellation, creationOptions);
+            var t = new Task<Task<T>>(func, state, cancellation, creationOptions);
             this.Enqueue(t);
             //return t.Result;
             return t.Unwrap();
@@ -540,7 +393,7 @@ namespace AsNum.Throttle
         /// <returns></returns>
         public Task Execute(Action act, CancellationToken cancellation = default, TaskCreationOptions creationOptions = TaskCreationOptions.None)
         {
-            var t = new Task(this.Wrap(act), cancellation, creationOptions);
+            var t = new Task(act, cancellation, creationOptions);
             this.Enqueue(t);
             return t;
         }
@@ -555,7 +408,7 @@ namespace AsNum.Throttle
         /// <returns></returns>
         public Task Execute<T>(Action<object?> act, object? state, CancellationToken cancellation = default, TaskCreationOptions creationOptions = TaskCreationOptions.None)
         {
-            var t = new Task(this.Wrap(act), state, cancellation, creationOptions);
+            var t = new Task(act, state, cancellation, creationOptions);
             this.Enqueue(t);
             return t;
         }
@@ -646,8 +499,8 @@ namespace AsNum.Throttle
                         this.Counter.Dispose();
                     }
 
-                    this.semaphoreSlim?.Dispose();
-                    this.tskBlock?.Dispose();
+                    //this.semaphoreSlim?.Dispose();
+                    //this.tskBlock?.Dispose();
                     this.cts.Dispose();
                 }
                 isDisposed = true;

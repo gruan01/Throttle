@@ -24,11 +24,17 @@ namespace AsNum.Throttle.TestConsole
 
             using var Tester = new Tester(10, TimeSpan.FromSeconds(1), b);
 
-            await Tester.Run(n);
+            while (true)
+            {
+                await Tester.Run(n);
 
-            Console.WriteLine("Complete....");
+                Console.WriteLine("Complete....");
 
-            Console.Read();
+                var x = Console.ReadKey();
+                if (x.Key == ConsoleKey.Escape)
+                    break;
+            }
+
         }
 
         //private static void CurrentDomain_ProcessExit(object sender, EventArgs e)
