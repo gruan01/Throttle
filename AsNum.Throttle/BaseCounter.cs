@@ -89,6 +89,12 @@ namespace AsNum.Throttle
         /// <summary>
         /// 
         /// </summary>
+        public virtual void Change() { 
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
         protected void ResetFired()
         {
             this.OnReset?.Invoke(this, EventArgs.Empty);

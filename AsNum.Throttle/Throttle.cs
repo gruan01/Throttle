@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
+using System.Security.Cryptography;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 namespace AsNum.Throttle
@@ -20,6 +22,11 @@ namespace AsNum.Throttle
         /// 任务队列
         /// </summary>
         private readonly ConcurrentQueue<Task> tskQueue = new();
+
+        /// <summary>
+        /// 用 tskQueue 来判断是不是为空，消耗CPU
+        /// </summary>
+        private volatile int tskCount = 0;
 
         #endregion
 
@@ -112,7 +119,7 @@ namespace AsNum.Throttle
 
             this.ThrottleName = throttleName;
 
-            var throttleID = Guid.NewGuid().ToString("N");
+            var throttleID = ToMD5(Guid.NewGuid().ToString("N"));
 
             this.logger = logger;
 
@@ -155,13 +162,6 @@ namespace AsNum.Throttle
         /// <param name="task"></param>
         private void Unwrap(Task task)
         {
-            //var _tsk = task is Task<Task> tt
-            //                ? tt.Unwrap()
-            //                : (task is IUnwrap wt
-            //                        ? wt.GetUnwrapped()
-            //                        : task
-            //                    );
-
             var _tsk = task is Task<Task> tt
                             ? tt.Unwrap()
                             : task;
@@ -201,6 +201,7 @@ namespace AsNum.Throttle
 
             //占用一个空间后, 才能将任务插入队列
             this.tskQueue.Enqueue(task);
+            Interlocked.Increment(ref this.tskCount);
         }
 
 
@@ -239,21 +240,22 @@ namespace AsNum.Throttle
         /// <returns></returns>
         private async Task RunLoop()
         {
+            this.Counter.Change();
+
             while (!token.IsCancellationRequested)
             {
-                if (!SpinWait.SpinUntil(() => !tskQueue.IsEmpty, 100))
+                if (!SpinWait.SpinUntil(() => tskCount > 0, 1000))
                 {
                     continue;
                 }
 
-                //本次总共执行了几个 tsk
-                var x = 0U;
 
                 try
                 {
                     //先锁, 在获取计数,
                     //如果先获取计数, 在锁, 会造成超频的情况.
-                    if (await this.Counter.TryLock())
+                    var lockSucc = await this.Counter.TryLock();
+                    if (lockSucc)
                     {
                         //当前计数
                         var currCount = await this.Counter.CurrentCount();
@@ -264,6 +266,9 @@ namespace AsNum.Throttle
 
                             //可以插入几个. 
                             var n = Math.Min(this.Counter.BatchCount, space);
+
+                            //本次总共执行了几个 tsk
+                            var x = 0U;
 
                             for (var i = 0; i < n; i++)
                             {
@@ -278,29 +283,21 @@ namespace AsNum.Throttle
                                 }
 
                             }
-                        }
-                    }
 
-                    if (x > 0)
-                    {
-                        await this.Counter.IncrementCount(x);
+                            if (x > 0)
+                            {
+                                await this.Counter.IncrementCount(x);
+                                this.Counter.Change();
+                                Interlocked.Add(ref this.tskCount, (int)-x);
+                            }
+                        }
+
+                        await this.Counter.ReleaseLock();
                     }
                 }
                 catch (Exception e)
                 {
                     this.logger?.Log(null, e);
-                }
-                finally
-                {
-                    try
-                    {
-                        await this.Counter.ReleaseLock();
-                    }
-                    catch (Exception e)
-                    {
-                        //RedisCounter 在 ReleaseLock 时, 可能会因为连接超时而报错.
-                        this.logger?.Log(null, e);
-                    }
                 }
 
                 this.Counter.WaitMoment();
@@ -453,6 +450,23 @@ namespace AsNum.Throttle
 
         #endregion
 
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="input"></param>
+        /// <returns></returns>
+        private static string ToMD5(string input)
+        {
+            if (string.IsNullOrEmpty(input))
+                return "";
+
+            //using var md5 = new MD5CryptoServiceProvider();
+            using var md5 = MD5.Create();
+            var bs = md5.ComputeHash(Encoding.UTF8.GetBytes(input));
+            var str = BitConverter.ToString(bs, 4, 8).Replace("-", "");
+            return str;
+        }
 
 
         #region dispose

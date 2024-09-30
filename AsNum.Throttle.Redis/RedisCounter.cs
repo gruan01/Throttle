@@ -1,7 +1,8 @@
-﻿using System;
+﻿using StackExchange.Redis;
+using System;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using StackExchange.Redis;
 
 namespace AsNum.Throttle.Redis
 {
@@ -62,6 +63,28 @@ namespace AsNum.Throttle.Redis
         /// </summary>
         private readonly int rndSleepInMS = 5;
 
+
+        //private static readonly string incrByLuaScriptStr = """
+        //    local current
+        //    current = redis.call("INCRBY", @key, @value)
+        //    if tonumber(current) == tonumber(@value) then
+        //        redis.call("expire", @key, @expire, "NX")
+        //    end
+        //    return current
+        //    """;
+
+        private static readonly string incrByLuaScriptStr = """
+            local current
+            current = redis.call("INCRBY", @key, @value)
+            redis.call("expire", @key, @expire, "NX")
+            return current
+            """;
+
+        private static readonly LuaScript incrByLuaScript = LuaScript.Prepare(incrByLuaScriptStr);
+
+
+        private readonly LoadedLuaScript loadedIncrByLuaScript;
+
         /// <summary>
         /// 
         /// </summary>
@@ -84,6 +107,14 @@ namespace AsNum.Throttle.Redis
             this.subscriber = connection.GetSubscriber();
             this.BatchCount = batchCount;
             this.rndSleepInMS = rndSleepInMS;
+
+            var server = connection
+                .GetEndPoints()
+                .Select(x => connection.GetServer(x))
+                .First(x => !x.IsReplica);
+
+            //https://stackexchange.github.io/StackExchange.Redis/Scripting.html#:~:text=StackExchange.Redis%20handles%20Lua%20script%20caching%20internally.%20It%20automatically
+            this.loadedIncrByLuaScript = incrByLuaScript.Load(server);
         }
 
 
@@ -111,17 +142,22 @@ namespace AsNum.Throttle.Redis
 
 
         /// <summary>
-        /// 随机待待0~2 毫秒, 拯救CPU
+        /// 随机待待, 拯救CPU
         /// </summary>
-        /// <returns></returns>
         public override void WaitMoment()
         {
-            var t = rnd.Next(1, this.rndSleepInMS);
-            //await Task.Delay(t);
-            //return Task.CompletedTask;
             SpinWait.SpinUntil(() => false, t);
         }
 
+
+        private /*volatile*/ int t = 0;
+        /// <summary>
+        /// 
+        /// </summary>
+        public override void Change()
+        {
+            this.t = rnd.Next(1, this.rndSleepInMS);
+        }
 
         /// <summary>
         /// 
@@ -132,25 +168,59 @@ namespace AsNum.Throttle.Redis
             return await this.db.StringGetAsync(this.countKey, CommandFlags.DemandMaster).ToUInt(0);
         }
 
+
+
+
+        ///// <summary>
+        ///// 
+        ///// </summary>
+        ///// <returns></returns>
+        //public override async ValueTask<uint> IncrementCount(uint a)
+        //{
+        //    //INCR / INCRBY 的 BUG, TTL 会丢失
+        //    await this.CheckTTL();
+        //    try
+        //    {
+        //        var nt = this.db.StringIncrementAsync(this.countKey, a, flags: CommandFlags.DemandMaster);
+
+        //        var et = this.db.KeyExpireAsync(
+        //            key: this.countKey,
+        //            expiry: this.Period,
+        //            when: ExpireWhen.HasNoExpiry,
+        //            flags: CommandFlags.DemandMaster /*| CommandFlags.FireAndForget*/);
+
+        //        await Task.WhenAll(nt, et);
+
+        //        var n = await nt;
+
+        //        return (uint)n;
+        //    }
+        //    catch
+        //    {
+        //        await this.db.StringSetAsync(this.countKey, a, this.Period, flags: CommandFlags.DemandMaster /*| CommandFlags.FireAndForget*/);
+        //        return a;
+        //    }
+        //}
+
+
         /// <summary>
         /// 
         /// </summary>
         /// <returns></returns>
         public override async ValueTask<uint> IncrementCount(uint a)
         {
-            //没有找到原因, TTL 总是有 -1 的情况...
-            await this.CheckTTL();
             try
             {
-                var n = (uint)await this.db.StringIncrementAsync(this.countKey, a, flags: CommandFlags.DemandMaster);
-                if (n == a || n <= 1)
+                var n = await loadedIncrByLuaScript.EvaluateAsync(this.db, new
                 {
-                    //只有第一次时, 才对该值做 TTL
-                    await db.KeyExpireAsync(this.countKey, this.Period, CommandFlags.DemandMaster);
-                }
-                return n;
+                    key = this.countKey,
+                    value = (int)a,
+                    expire = (int)this.Period.TotalSeconds
+                });
+
+                return (uint)(int)n;
             }
-            catch
+            catch (Exception ex)
             {
                 await this.db.StringSetAsync(this.countKey, a, this.Period, flags: CommandFlags.DemandMaster);
                 return a;
@@ -158,6 +228,7 @@ namespace AsNum.Throttle.Redis
         }
 
 
+        //private volatile int inCheck = 0;
         /// <summary>
         /// 
         /// </summary>
@@ -194,7 +265,7 @@ namespace AsNum.Throttle.Redis
         /// <returns></returns>
         public override async Task ReleaseLock()
         {
-            await this.db.LockReleaseAsync(this.lockKey, this.ThrottleID, CommandFlags.DemandMaster);
+            await this.db.LockReleaseAsync(this.lockKey, this.ThrottleID, CommandFlags.DemandMaster | CommandFlags.FireAndForget);
         }
 
 
