@@ -128,7 +128,7 @@ namespace AsNum.Throttle
 
 
             this.Counter = counter ?? new DefaultCounter();
-            this.Counter.SetUp(throttleName, throttleID, frequency, period, lockTimeout);
+            this.Counter.SetUp(throttleName, throttleID, frequency, period, lockTimeout, logger);
             this.Counter.OnReset += Counter_OnReset;
 
             this.Updater = updater ?? new DefaultCfgUpater();

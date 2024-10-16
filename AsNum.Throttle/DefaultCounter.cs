@@ -118,10 +118,11 @@ namespace AsNum.Throttle
         /// 
         /// </summary>
         /// <returns></returns>
-        public override ValueTask<uint> IncrementCount(uint n)
+        public override Task IncrementCount(uint n)
         {
-            var a = Interlocked.Add(ref this._currentCount, n);
-            return new ValueTask<uint>(a);
+            _ = Interlocked.Add(ref this._currentCount, n);
+            return Task.CompletedTask;
+            //return new ValueTask<uint>(a);
         }
 
 

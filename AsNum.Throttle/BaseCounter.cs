@@ -28,6 +28,10 @@ namespace AsNum.Throttle
         /// </summary>
         protected string ThrottleID { get; private set; } = "";
 
+        /// <summary>
+        /// 
+        /// </summary>
+        protected ILogger? Logger { get; private set; }
 
         /// <summary>
         /// 
@@ -60,7 +64,7 @@ namespace AsNum.Throttle
         /// 
         /// </summary>
         /// <returns></returns>
-        public abstract ValueTask<uint> IncrementCount(uint n);
+        public abstract Task IncrementCount(uint n);
 
 
         /// <summary>
@@ -89,7 +93,8 @@ namespace AsNum.Throttle
         /// <summary>
         /// 
         /// </summary>
-        public virtual void Change() { 
+        public virtual void Change()
+        {
         }
 
         /// <summary>
@@ -109,7 +114,7 @@ namespace AsNum.Throttle
         /// <param name="frequency"></param>
         /// <param name="period"></param>
         /// <param name="lockTimeout"></param>
-        internal void SetUp(string throttleName, string throttleID, int frequency, TimeSpan period, TimeSpan? lockTimeout)
+        internal void SetUp(string throttleName, string throttleID, int frequency, TimeSpan period, TimeSpan? lockTimeout, ILogger? logger)
         {
             this.ThrottleName = throttleName;
             this.ThrottleID = throttleID;
@@ -119,6 +124,8 @@ namespace AsNum.Throttle
 
 
             this.LockTimeout = lockTimeout;
+
+            this.Logger = logger;
 
             this.Initialize(true);
         }

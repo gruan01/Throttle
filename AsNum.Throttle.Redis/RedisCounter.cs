@@ -64,25 +64,31 @@ namespace AsNum.Throttle.Redis
         private readonly int rndSleepInMS = 5;
 
 
-        //private static readonly string incrByLuaScriptStr = """
-        //    local current
-        //    current = redis.call("INCRBY", @key, @value)
-        //    if tonumber(current) == tonumber(@value) then
-        //        redis.call("expire", @key, @expire, "NX")
-        //    end
-        //    return current
-        //    """;
-
-        private static readonly string incrByLuaScriptStr = """
+        //老板版的 Redis 不支持 expire 的第3个参数
+        //从 Redis 版本 7.0.0 开始：添加了选项： NX 、 XX 、 GT和LT 。
+        private static readonly string incrByLuaScriptOld = """
             local current
-            current = redis.call("INCRBY", @key, @value)
-            redis.call("expire", @key, @expire, "NX")
+            current = redis.call("INCRBY" , @k, @v)
+            if(current <= tonumber(@v))
+            then
+                redis.call("expire" , @k, @e)
+            end
             return current
             """;
 
-        private static readonly LuaScript incrByLuaScript = LuaScript.Prepare(incrByLuaScriptStr);
+        //Redis 7 以上版本使用
+        private static readonly string incrByLuaScript7 = """
+            local current
+            current = redis.call("INCRBY" , @k, @v)
+            redis.call("expire" , @k, @e, "NX")
+            return current
+            """;
 
+        private readonly LuaScript incrByLuaScript;
 
+        /// <summary>
+        /// 
+        /// </summary>
         private readonly LoadedLuaScript loadedIncrByLuaScript;
 
         /// <summary>
@@ -102,7 +108,6 @@ namespace AsNum.Throttle.Redis
             if (rndSleepInMS <= 0)
                 throw new ArgumentOutOfRangeException($"{nameof(rndSleepInMS)} must greate than 0");
 
-
             this.db = connection.GetDatabase();
             this.subscriber = connection.GetSubscriber();
             this.BatchCount = batchCount;
@@ -113,8 +118,15 @@ namespace AsNum.Throttle.Redis
                 .Select(x => connection.GetServer(x))
                 .First(x => !x.IsReplica);
 
+            var v = server.Version;
+
+            if (v.Major < 7)
+                this.incrByLuaScript = LuaScript.Prepare(incrByLuaScriptOld);
+            else
+                this.incrByLuaScript = LuaScript.Prepare(incrByLuaScript7);
+
             //https://stackexchange.github.io/StackExchange.Redis/Scripting.html#:~:text=StackExchange.Redis%20handles%20Lua%20script%20caching%20internally.%20It%20automatically
-            this.loadedIncrByLuaScript = incrByLuaScript.Load(server);
+            this.loadedIncrByLuaScript = incrByLuaScript.Load(server, CommandFlags.DemandMaster);
         }
 
 
@@ -170,81 +182,25 @@ namespace AsNum.Throttle.Redis
 
 
 
-
-        ///// <summary>
-        ///// 
-        ///// </summary>
-        ///// <returns></returns>
-        //public override async ValueTask<uint> IncrementCount(uint a)
-        //{
-        //    //INCR / INCRBY 的 BUG, TTL 会丢失
-        //    await this.CheckTTL();
-        //    try
-        //    {
-        //        var nt = this.db.StringIncrementAsync(this.countKey, a, flags: CommandFlags.DemandMaster);
-
-        //        var et = this.db.KeyExpireAsync(
-        //            key: this.countKey,
-        //            expiry: this.Period,
-        //            when: ExpireWhen.HasNoExpiry,
-        //            flags: CommandFlags.DemandMaster /*| CommandFlags.FireAndForget*/);
-
-        //        await Task.WhenAll(nt, et);
-
-        //        var n = await nt;
-
-        //        return (uint)n;
-        //    }
-        //    catch
-        //    {
-        //        await this.db.StringSetAsync(this.countKey, a, this.Period, flags: CommandFlags.DemandMaster /*| CommandFlags.FireAndForget*/);
-        //        return a;
-        //    }
-        //}
-
-
         /// <summary>
         /// 
         /// </summary>
         /// <returns></returns>
-        public override async ValueTask<uint> IncrementCount(uint a)
+        public override async Task IncrementCount(uint a)
         {
             try
             {
-                var n = await loadedIncrByLuaScript.EvaluateAsync(this.db, new
+                _ = await loadedIncrByLuaScript.EvaluateAsync(this.db, new
                 {
-                    key = this.countKey,
-                    value = (int)a,
-                    expire = (int)this.Period.TotalSeconds
+                    k = (RedisKey)this.countKey,
+                    v = (int)a,
+                    e = (int)this.Period.TotalSeconds
                 });
-
-                return (uint)(int)n;
             }
             catch (Exception ex)
             {
                 await this.db.StringSetAsync(this.countKey, a, this.Period, flags: CommandFlags.DemandMaster);
-                return a;
-            }
-        }
-
-
-        //private volatile int inCheck = 0;
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <returns></returns>
-        private async Task CheckTTL()
-        {
-            try
-            {
-                var t = await this.db.KeyTimeToLiveAsync(this.countKey, CommandFlags.DemandMaster);
-                if (t is null)
-                {
-                    await this.db.KeyDeleteAsync(this.countKey, CommandFlags.DemandMaster);
-                }
-            }
-            catch
-            {
+                this.Logger?.Log(ex.Message, ex);
             }
         }
 
