@@ -426,7 +426,6 @@ namespace AsNum.Throttle
         {
             try
             {
-                await this.Counter.TryLock();
                 //当前计数
                 var currCount = await this.Counter.CurrentCount();
                 var flag = currCount < this.Counter.Frequency;
@@ -439,13 +438,8 @@ namespace AsNum.Throttle
             catch (Exception e)
             {
                 this.logger?.Log(null, e);
+                return true;
             }
-            finally
-            {
-                await this.Counter.ReleaseLock();
-            }
-
-            return true;
         }
 
         #endregion
