@@ -73,7 +73,6 @@ namespace AsNum.Throttle.Redis
             then
                 redis.call("expire" , @k, @e)
             end
-            return current
             """;
 
         //Redis 7 以上版本使用
@@ -81,7 +80,6 @@ namespace AsNum.Throttle.Redis
             local current
             current = redis.call("INCRBY" , @k, @v)
             redis.call("expire" , @k, @e, "NX")
-            return current
             """;
 
         private readonly LuaScript incrByLuaScript;
