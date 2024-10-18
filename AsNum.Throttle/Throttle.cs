@@ -242,14 +242,18 @@ namespace AsNum.Throttle
         {
             this.Counter.Change();
 
+            //如果在1秒内没有新 task 进来，就 Delay ，释放CPU (SpinUntil 耗CPU)。最大延迟5秒
+            var d = 0;
             while (!token.IsCancellationRequested)
             {
                 if (!SpinWait.SpinUntil(() => tskCount > 0, 1000))
                 {
-                    await Task.Delay(1000);
+                    d = d >= 5 ? 5 : d + 1;
+                    await Task.Delay(d * 1000);
                     continue;
                 }
 
+                d = 0;
 
                 try
                 {
