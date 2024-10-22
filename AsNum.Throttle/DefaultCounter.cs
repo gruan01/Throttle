@@ -109,9 +109,10 @@ namespace AsNum.Throttle
         /// 
         /// </summary>
         /// <returns></returns>
-        public override ValueTask<uint> CurrentCount()
+        public override Task<uint> CurrentCount()
         {
-            return new ValueTask<uint>(this._currentCount);
+            //return new ValueTask<uint>(this._currentCount);
+            return Task.FromResult(this._currentCount);
         }
 
         /// <summary>
@@ -130,9 +131,9 @@ namespace AsNum.Throttle
         /// 
         /// </summary>
         /// <returns></returns>
-        public override ValueTask<bool> TryLock()
+        public override Task<bool> TryLock()
         {
-            return new ValueTask<bool>(true);
+            return Task.FromResult(true);
         }
 
 

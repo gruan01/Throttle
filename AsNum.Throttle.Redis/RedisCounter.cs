@@ -175,9 +175,10 @@ public class RedisCounter : BaseCounter
     /// 
     /// </summary>
     /// <returns></returns>
-    public override async ValueTask<uint> CurrentCount()
+    public override async Task<uint> CurrentCount()
     {
-        return await this.db.StringGetAsync(this.countKey, CommandFlags.DemandMaster).ToUInt(0);
+        var v = await this.db.StringGetAsync(this.countKey, CommandFlags.DemandMaster);//.ToUInt(0);
+        return (uint)v;
     }
 
 
@@ -209,7 +210,7 @@ public class RedisCounter : BaseCounter
     /// 
     /// </summary>
     /// <returns></returns>
-    public override async ValueTask<bool> TryLock()
+    public override async Task<bool> TryLock()
     {
         return await this.db.LockTakeAsync(this.lockKey, this.ThrottleID, this.LockTimeout ?? TimeSpan.FromSeconds(1), CommandFlags.DemandMaster);
     }

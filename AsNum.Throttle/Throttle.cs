@@ -248,7 +248,7 @@ namespace AsNum.Throttle
             {
                 if (!SpinWait.SpinUntil(() => tskCount > 0, 1000))
                 {
-                    d = d >= 5 ? 5 : d + 1;
+                    d = d >= 2 ? 2 : d + 1;
                     await Task.Delay(d * 1000);
                     continue;
                 }

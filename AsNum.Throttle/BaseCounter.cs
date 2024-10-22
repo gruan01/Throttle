@@ -54,7 +54,7 @@ public abstract class BaseCounter : IUpdate, IDisposable
     /// <summary>
     /// 
     /// </summary>
-    public abstract ValueTask<uint> CurrentCount();
+    public abstract Task<uint> CurrentCount();
 
 
     /// <summary>
@@ -68,7 +68,7 @@ public abstract class BaseCounter : IUpdate, IDisposable
     /// 
     /// </summary>
     /// <returns></returns>
-    public abstract ValueTask<bool> TryLock();
+    public abstract Task<bool> TryLock();
 
 
 

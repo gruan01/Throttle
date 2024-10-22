@@ -43,6 +43,16 @@ public static class Extensions
         }
     }
 
+
+    internal static uint ToUInt(this RedisValue v, uint defaultValue)
+    {
+        try
+        {
+            return (uint)v;
+        }
+        catch { return defaultValue; }
+    }
+
     /// <summary>
     /// 
     /// </summary>
