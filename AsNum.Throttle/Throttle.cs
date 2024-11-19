@@ -91,6 +91,7 @@ namespace AsNum.Throttle
         /// <param name="counter"></param>
         /// <param name="lockTimeout">避免因为客户端失去连接而引起的死锁</param>
         /// <param name="concurrentCount">并发数, 废弃，不在使用</param>
+        /// <param name="isSelectMode">是否是选择模式，选择模式下，不需要走 RunLoop, 用以节省CPU</param>
         /// <param name="logger"></param>
         /// <param name="updater">用于更新周期/频率</param>
         /// <param name="throttleName">应该是一个唯一的字符串, 这个参数做为 Redis 的 key 的一部份, 因此要符合 redis key 的规则</param>
@@ -102,7 +103,8 @@ namespace AsNum.Throttle
                         BaseCfgUpdater? updater = null,
                         ILogger? logger = null,
                         TimeSpan? lockTimeout = null,
-                        int? concurrentCount = null
+                        int? concurrentCount = null,
+                        bool isSelectMode = false
                         )
         {
             if (string.IsNullOrWhiteSpace(throttleName))
@@ -139,7 +141,8 @@ namespace AsNum.Throttle
 
             this.token = this.cts.Token;
 
-            this.StartProcess();
+            if (!isSelectMode)
+                this.StartProcess();
         }
 
 
