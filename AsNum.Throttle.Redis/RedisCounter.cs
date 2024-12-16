@@ -177,7 +177,7 @@ public class RedisCounter : BaseCounter
     /// <returns></returns>
     public override async Task<uint> CurrentCount()
     {
-        var v = await this.db.StringGetAsync(this.countKey, CommandFlags.DemandMaster);//.ToUInt(0);
+        var v = await this.db.StringGetAsync(this.countKey, CommandFlags.PreferMaster);//.ToUInt(0);
         return (uint)v;
     }
 
