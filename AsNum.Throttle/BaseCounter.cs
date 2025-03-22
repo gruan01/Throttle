@@ -83,8 +83,9 @@ public abstract class BaseCounter : IUpdate, IDisposable
     /// 
     /// </summary>
     /// <returns></returns>
-    public virtual void WaitMoment()
+    public virtual Task WaitMoment()
     {
+        return Task.CompletedTask;
     }
 
     /// <summary>
@@ -111,6 +112,7 @@ public abstract class BaseCounter : IUpdate, IDisposable
     /// <param name="frequency"></param>
     /// <param name="period"></param>
     /// <param name="lockTimeout"></param>
+    /// <param name="logger"></param>
     internal void SetUp(string throttleName, string throttleID, int frequency, TimeSpan period, TimeSpan? lockTimeout, ILogger? logger)
     {
         this.ThrottleName = throttleName;

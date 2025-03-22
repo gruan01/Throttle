@@ -86,7 +86,7 @@ namespace AsNum.Throttle
         /// 
         /// </summary>
         /// <returns></returns>
-        public override void WaitMoment()
+        public override async Task WaitMoment()
         {
             //if (this.avg > 1)
             //{
@@ -100,7 +100,8 @@ namespace AsNum.Throttle
 
             if (this.WaitTime > TimeSpan.Zero)
             {
-                SpinWait.SpinUntil(() => false, this.WaitTime);
+                //SpinWait.SpinUntil(() => false, this.WaitTime);
+                await Task.Delay(this.WaitTime);
             }
         }
 

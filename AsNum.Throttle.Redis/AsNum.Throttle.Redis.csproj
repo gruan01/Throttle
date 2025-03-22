@@ -1,17 +1,17 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
-		<TargetFrameworks>net6</TargetFrameworks>
+		<TargetFrameworks>net6;net8;net9</TargetFrameworks>
 		<GeneratePackageOnBuild>false</GeneratePackageOnBuild>
 		<IncludeSymbols>true</IncludeSymbols>
 		<PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
 		<GenerateAssemblyInfo>false</GenerateAssemblyInfo>
 		<PackageTags>AsNum</PackageTags>
 		<GenerateAssemblyInfo>true</GenerateAssemblyInfo>
-		<PackageVersion>2.3.0.3</PackageVersion>
-		<AssemblyVersion>2.3.0.3</AssemblyVersion>
-		<FileVersion>2.3.0.3</FileVersion>
-		<Version>2.3.0.3</Version>
+		<PackageVersion>2.3.0.8</PackageVersion>
+		<AssemblyVersion>2.3.0.8</AssemblyVersion>
+		<FileVersion>2.3.0.8</FileVersion>
+		<Version>2.3.0.8</Version>
 		<Authors>xling</Authors>
 		<LangVersion>11.0</LangVersion>
 		<DocumentationFile>bin\$(Configuration)\$(TargetFramework)\$(AssemblyName).xml</DocumentationFile>

@@ -22,7 +22,7 @@ namespace AsNum.Throttle.TestConsole
             if (!int.TryParse(str, out int b))
                 b = 2;
 
-            using var Tester = new Tester(10, TimeSpan.FromSeconds(3), b);
+            using var Tester = new Tester(10, TimeSpan.FromSeconds(1), b);
 
             while (true)
             {

@@ -154,11 +154,9 @@ public class RedisCounter : BaseCounter
     /// <summary>
     /// 随机待待, 拯救CPU
     /// </summary>
-    public override void WaitMoment()
+    public override async Task WaitMoment()
     {
-        //SpinWait.SpinUntil(() => false, t);
-
-        Thread.Sleep(t);
+        await Task.Delay(t);
     }
 
 
@@ -212,7 +210,18 @@ public class RedisCounter : BaseCounter
     /// <returns></returns>
     public override async Task<bool> TryLock()
     {
-        return await this.db.LockTakeAsync(this.lockKey, this.ThrottleID, this.LockTimeout ?? TimeSpan.FromSeconds(1), CommandFlags.DemandMaster);
+        /*
+        StackExchange.Redis.RedisTimeoutException: Timeout awaiting response (outbound=5KiB, inbound=0KiB, 1797ms elapsed, timeout is 1000ms), command=SET, next: UNWATCH, inst: 0, qu: 5, qs: 38, aw: True, bw: WritingMessage, rs: ReadAsync, ws: Flushed, in: 95, in-pipe: 0, out-pipe: 0, last-in: 16, cur-in: 0, sync-ops: 160, async-ops: 1184435, serverEndpoint: 10.89.70.14:8901, conn-sec: 928.97, aoc: 1, mc: 1/1/0, mgr: 10 of 10 available, clientName: WEB13(SE.Redis-v2.8.31.52602), IOCP: (Busy=0,Free=1000,Min=150,Max=1000), WORKER: (Busy=21,Free=32746,Min=20,Max=32767), POOL: (Threads=30,QueuedItems=234,CompletedItems=15512153,Timers=149), v: 2.8.31.52602 (Please take a look at this article for some common client-side issues that can cause timeouts: https://stackexchange.github.io/StackExchange.Redis/Timeouts)
+        at AsNum.Throttle.Redis.RedisCounter.TryLock()         
+         */
+        try
+        {
+            return await this.db.LockTakeAsync(this.lockKey, this.ThrottleID, this.LockTimeout ?? TimeSpan.FromSeconds(1), CommandFlags.DemandMaster);
+        }
+        catch
+        {
+            return false;
+        }
     }
 
 

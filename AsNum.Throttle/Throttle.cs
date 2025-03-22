@@ -28,6 +28,10 @@ namespace AsNum.Throttle
         /// </summary>
         private volatile int tskCount = 0;
 
+        /// <summary>
+        /// 
+        /// </summary>
+        private readonly ManualResetEventSlim mres = new(false);
         #endregion
 
 
@@ -64,12 +68,6 @@ namespace AsNum.Throttle
         /// 
         /// </summary>
         private readonly ILogger? logger;
-
-
-        ///// <summary>
-        ///// 用于控制并发数
-        ///// </summary>
-        //private readonly SemaphoreSlim? semaphoreSlim = null;
 
 
         /// <summary>
@@ -205,6 +203,7 @@ namespace AsNum.Throttle
             //占用一个空间后, 才能将任务插入队列
             this.tskQueue.Enqueue(task);
             Interlocked.Increment(ref this.tskCount);
+            this.mres.Set();
         }
 
 
@@ -245,18 +244,12 @@ namespace AsNum.Throttle
         {
             this.Counter.Change();
 
-            //如果在1秒内没有新 task 进来，就 Delay ，释放CPU (SpinUntil 耗CPU)。最大延迟5秒
-            var d = 0;
             while (!token.IsCancellationRequested)
             {
-                if (!SpinWait.SpinUntil(() => tskCount > 0, 1000))
-                {
-                    d = d >= 2 ? 2 : d + 1;
-                    await Task.Delay(d * 1000);
-                    continue;
-                }
-
-                d = 0;
+                //if (!SpinWait.SpinUntil(() => tskCount > 0, 10))
+                //{
+                this.mres.Wait(token);
+                //}
 
                 try
                 {
@@ -308,7 +301,7 @@ namespace AsNum.Throttle
                     this.logger?.Log(null, e);
                 }
 
-                this.Counter.WaitMoment();
+                await this.Counter.WaitMoment();
             }
         }
 
@@ -463,10 +456,8 @@ namespace AsNum.Throttle
             if (string.IsNullOrEmpty(input))
                 return "";
 
-            //using var md5 = new MD5CryptoServiceProvider();
-            using var md5 = MD5.Create();
-            var bs = md5.ComputeHash(Encoding.UTF8.GetBytes(input));
-            var str = BitConverter.ToString(bs, 4, 8).Replace("-", "");
+            var bs = MD5.HashData(Encoding.UTF8.GetBytes(input));
+            var str = Convert.ToHexString(bs, 4, 8);
             return str;
         }
 
@@ -515,9 +506,8 @@ namespace AsNum.Throttle
                         this.Counter.Dispose();
                     }
 
-                    //this.semaphoreSlim?.Dispose();
-                    //this.tskBlock?.Dispose();
                     this.cts.Dispose();
+                    this.mres.Dispose();
                 }
                 isDisposed = true;
             }
