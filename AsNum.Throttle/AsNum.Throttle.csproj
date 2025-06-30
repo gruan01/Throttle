@@ -7,12 +7,11 @@
 		<PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
 		<PackageTags>AsNum</PackageTags>
 		<GenerateAssemblyInfo>true</GenerateAssemblyInfo>
-		<PackageVersion>2.3.0.7</PackageVersion>
-		<AssemblyVersion>2.3.0.7</AssemblyVersion>
-		<FileVersion>2.3.0.7</FileVersion>
-		<Version>2.3.0.7</Version>
+		<PackageVersion>2.3.1.0</PackageVersion>
+		<AssemblyVersion>2.3.1.0</AssemblyVersion>
+		<FileVersion>2.3.1.0</FileVersion>
+		<Version>2.3.1.0</Version>
 		<Authors>xling</Authors>
-		<LangVersion>11</LangVersion>
 		<Description>Action / Func throttle in a period</Description>
 		<DocumentationFile>bin\$(Configuration)\$(TargetFramework)\$(AssemblyName).xml</DocumentationFile>
 		<RepositoryUrl>https://github.com/gruan01/Throttle</RepositoryUrl>
@@ -27,7 +26,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<PackageReference Include="IDisposableAnalyzers" Version="4.0.7">
+		<PackageReference Include="IDisposableAnalyzers" Version="4.0.8">
 			<PrivateAssets>all</PrivateAssets>
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 		</PackageReference>

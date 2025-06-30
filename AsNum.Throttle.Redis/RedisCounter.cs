@@ -1,7 +1,6 @@
 ﻿using StackExchange.Redis;
 using System;
 using System.Linq;
-using System.Threading;
 using System.Threading.Tasks;
 
 namespace AsNum.Throttle.Redis;
@@ -175,8 +174,16 @@ public class RedisCounter : BaseCounter
     /// <returns></returns>
     public override async Task<uint> CurrentCount()
     {
-        var v = await this.db.StringGetAsync(this.countKey, CommandFlags.PreferMaster);//.ToUInt(0);
-        return (uint)v;
+        try
+        {
+            var v = await this.db.StringGetAsync(this.countKey, CommandFlags.PreferMaster);//.ToUInt(0);
+            return (uint)v;
+        }
+        catch (Exception ex)
+        {
+            this.Logger?.Log(ex.Message, ex);
+            return 0;
+        }
     }
 
 
@@ -198,7 +205,7 @@ public class RedisCounter : BaseCounter
         }
         catch (Exception ex)
         {
-            await this.db.StringSetAsync(this.countKey, a, this.Period, flags: CommandFlags.DemandMaster);
+            //await this.db.StringSetAsync(this.countKey, a, this.Period, flags: CommandFlags.DemandMaster);
             this.Logger?.Log(ex.Message, ex);
         }
     }
@@ -218,8 +225,9 @@ public class RedisCounter : BaseCounter
         {
             return await this.db.LockTakeAsync(this.lockKey, this.ThrottleID, this.LockTimeout ?? TimeSpan.FromSeconds(1), CommandFlags.DemandMaster);
         }
-        catch
+        catch (Exception ex)
         {
+            this.Logger?.Log(ex.Message, ex);
             return false;
         }
     }
@@ -231,7 +239,14 @@ public class RedisCounter : BaseCounter
     /// <returns></returns>
     public override async Task ReleaseLock()
     {
-        await this.db.LockReleaseAsync(this.lockKey, this.ThrottleID, CommandFlags.DemandMaster | CommandFlags.FireAndForget);
+        try
+        {
+            await this.db.LockReleaseAsync(this.lockKey, this.ThrottleID, CommandFlags.DemandMaster | CommandFlags.FireAndForget);
+        }
+        catch (Exception ex)
+        {
+            this.Logger?.Log(ex.Message, ex);
+        }
     }
 
 
@@ -240,6 +255,13 @@ public class RedisCounter : BaseCounter
     /// </summary>
     protected override void InnerDispose()
     {
-        this.subscriber.Unsubscribe(KEY_EXPIRED_CHANNEL);
+        try
+        {
+            this.subscriber.Unsubscribe(KEY_EXPIRED_CHANNEL);
+        }
+        catch (Exception ex)
+        {
+            this.Logger?.Log(ex.Message, ex);
+        }
     }
 }

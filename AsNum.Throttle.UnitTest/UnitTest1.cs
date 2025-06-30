@@ -7,7 +7,7 @@ namespace AsNum.Throttle.UnitTest
     public class UnitTest1
     {
         [Fact]
-        public async void DefaultUpdaterTest()
+        public async Task DefaultUpdaterTest()
         {
             var a = new TimeSpan(100);
             var b = TimeSpan.FromMicroseconds(10);

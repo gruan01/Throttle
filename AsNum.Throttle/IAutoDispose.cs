@@ -1,13 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+﻿namespace AsNum.Throttle;
 
-namespace AsNum.Throttle
+/// <summary>
+/// 
+/// </summary>
+public interface IAutoDispose
 {
-    /// <summary>
-    /// 
-    /// </summary>
-    public interface IAutoDispose
-    {
-    }
 }

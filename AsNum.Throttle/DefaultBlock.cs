@@ -1,101 +1,75 @@
 ﻿using System;
-using System.Collections.Concurrent;
+using System.Threading;
+using System.Threading.Channels;
 using System.Threading.Tasks;
 
-namespace AsNum.Throttle
+namespace AsNum.Throttle;
+
+/// <summary>
+/// 用 BlockingCollection 实现的阻止队列. 不能跨进程
+/// </summary>
+public sealed class DefaultBlock : BaseBlock
 {
+
     /// <summary>
-    /// 用 BlockingCollection 实现的阻止队列. 不能跨进程
+    /// 
     /// </summary>
-    public sealed class DefaultBlock : BaseBlock, IAutoDispose, IDisposable
+    private Channel<byte> block = Channel.CreateUnbounded<byte>();
+
+    /// <summary>
+    /// 
+    /// </summary>
+    protected override void Initialize(bool firstLoad)
     {
+        var old = this.block;
+        //this.block = new BlockingCollection<byte>(this.Frequency);
+        this.block = Channel.CreateBounded<byte>(this.Frequency);
 
-        /// <summary>
-        /// 
-        /// </summary>
-        private BlockingCollection<byte> block = new();
-
-        /// <summary>
-        /// 
-        /// </summary>
-        protected override void Initialize(bool firstLoad)
+        //重新配置时, 把已经占用的空间重新占用.
+        var n = Math.Min(old?.Reader.Count ?? 0, this.Frequency);
+        for (var i = 0; i < n; i++)
         {
-            var old = this.block;
-            this.block = new BlockingCollection<byte>(this.Frequency);
-
-            //重新配置时, 把已经占用的空间重新占用.
-            var n = Math.Min(old?.Count ?? 0, this.Frequency);
-            for (var i = 0; i < n; i++)
-            {
-                this.block.Add(0);
-            }
-            old?.Dispose();
+            this.block.Writer.TryWrite(0);
         }
+    }
 
 
 
-        /// <summary>
-        /// 
-        /// </summary>
-        internal override void Acquire()
+    /// <summary>
+    /// 
+    /// </summary>
+    internal override async Task Acquire()
+    {
+        if (this.LockTimeout is null)
+            await this.block.Writer.WriteAsync(0);
+        else
         {
-            if (this.LockTimeout is null)
-                this.block.Add(0);
-            else
-                this.block.TryAdd(0, this.LockTimeout.Value);
+            using var cts = new CancellationTokenSource(this.LockTimeout.Value);
+            await this.block.Writer.WriteAsync(0, cts.Token);
         }
+    }
 
 
 
-        /// <summary>
-        /// 
-        /// </summary>
-        internal override void Release()
+    /// <summary>
+    /// 
+    /// </summary>
+    internal override async Task Release()
+    {
+        if (this.LockTimeout is null)
+            await this.block.Reader.ReadAsync();
+        else
         {
-            if (this.LockTimeout is null)
-                this.block.Take();
-            else
-                this.block.TryTake(out _, this.LockTimeout.Value);
+            using var cts = new CancellationTokenSource(this.LockTimeout.Value);
+            await this.block.Reader.ReadAsync(cts.Token);
         }
+    }
 
 
-        /// <summary>
-        /// 
-        /// </summary>
-        protected override void InnerDispose()
-        {
-            this.block?.Dispose();
-        }
-
-
-
-        #region dispose
-
-        /// <summary>
-        /// 
-        /// </summary>
-        ~DefaultBlock()
-        {
-            this.Dispose(false);
-        }
-
-
-        private bool isDisposed = false;
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <param name="flag"></param>
-        private void Dispose(bool flag)
-        {
-            if (!isDisposed)
-            {
-                if (flag)
-                {
-                    this.block?.Dispose();
-                }
-                isDisposed = true;
-            }
-        }
-        #endregion
+    /// <summary>
+    /// 
+    /// </summary>
+    protected override void InnerDispose()
+    {
     }
 }
