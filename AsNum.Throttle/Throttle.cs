@@ -248,10 +248,7 @@ public class Throttle : IDisposable
 
         while (!token.IsCancellationRequested)
         {
-            //if (!SpinWait.SpinUntil(() => tskCount > 0, 10))
-            //{
             this.mres.Wait(token);
-            //}
 
             try
             {
@@ -304,6 +301,11 @@ public class Throttle : IDisposable
             }
 
             await this.Counter.WaitMoment();
+
+            if (!SpinWait.SpinUntil(() => this.tskCount > 0, 10))
+            {
+                this.mres.Reset();
+            }
         }
     }
 
