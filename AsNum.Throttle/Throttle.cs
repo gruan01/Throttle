@@ -30,10 +30,10 @@ public class Throttle : IDisposable
     /// </summary>
     private volatile int tskCount = 0;
 
-    /// <summary>
-    /// 
-    /// </summary>
-    private readonly ManualResetEventSlim mres = new(false);
+    ///// <summary>
+    ///// 
+    ///// </summary>
+    //private readonly ManualResetEventSlim mres = new(false);
     #endregion
 
 
@@ -45,17 +45,18 @@ public class Throttle : IDisposable
     /// </summary>
     public string ThrottleName { get; }
 
+
+#pragma warning disable IDISP008 // Don't assign member with injected and created disposables
     /// <summary>
     /// 阻塞器
     /// </summary>
-#pragma warning disable IDISP008 // Don't assign member with injected and created disposables
     public BaseBlock Blocker { get; }
-#pragma warning restore IDISP008 // Don't assign member with injected and created disposables
+
 
     /// <summary>
     /// 计数器
     /// </summary>
-#pragma warning disable IDISP008 // Don't assign member with injected and created disposables
+
     public BaseCounter Counter { get; }
 #pragma warning restore IDISP008 // Don't assign member with injected and created disposables
 
@@ -72,6 +73,8 @@ public class Throttle : IDisposable
     private readonly ILogger? logger;
 
 
+
+
     /// <summary>
     /// 
     /// </summary>
@@ -85,6 +88,11 @@ public class Throttle : IDisposable
     /// <summary>
     /// 
     /// </summary>
+    private readonly bool tasklongRunningOption;
+
+    /// <summary>
+    /// 
+    /// </summary>
     /// <param name="period">周期</param>
     /// <param name="frequency">周期内最大允许执行次数</param>
     /// <param name="block"></param>
@@ -92,6 +100,7 @@ public class Throttle : IDisposable
     /// <param name="lockTimeout">避免因为客户端失去连接而引起的死锁</param>
     /// <param name="concurrentCount">并发数, 废弃，不在使用</param>
     /// <param name="isSelectMode">是否是选择模式，选择模式下，不需要走 RunLoop, 用以节省CPU</param>
+    /// <param name="tasklongRunningOption">是否使用 TaskCreationOptions.LongRunning</param>
     /// <param name="logger"></param>
     /// <param name="updater">用于更新周期/频率</param>
     /// <param name="throttleName">应该是一个唯一的字符串, 这个参数做为 Redis 的 key 的一部份, 因此要符合 redis key 的规则</param>
@@ -104,7 +113,8 @@ public class Throttle : IDisposable
                     ILogger? logger = null,
                     TimeSpan? lockTimeout = null,
                     int? concurrentCount = null,
-                    bool isSelectMode = false
+                    bool isSelectMode = false,
+                    bool tasklongRunningOption = true
                     )
     {
         if (string.IsNullOrWhiteSpace(throttleName))
@@ -140,6 +150,8 @@ public class Throttle : IDisposable
 
 
         this.token = this.cts.Token;
+
+        this.tasklongRunningOption = tasklongRunningOption;
 
         if (!isSelectMode)
             this.StartProcess();
@@ -205,7 +217,7 @@ public class Throttle : IDisposable
         //占用一个空间后, 才能将任务插入队列
         this.tskQueue.Enqueue(task);
         Interlocked.Increment(ref this.tskCount);
-        this.mres.Set();
+        //this.mres.Set();
     }
 
 
@@ -214,10 +226,16 @@ public class Throttle : IDisposable
     /// </summary>
     private void StartProcess()
     {
-        Task.Factory.StartNew(async () =>
-        {
-            await RunLoop();
-        }, this.token, TaskCreationOptions.LongRunning, TaskScheduler.Default);
+        if (this.tasklongRunningOption)
+            Task.Factory.StartNew(async () =>
+            {
+                await RunLoop();
+            }, this.token, TaskCreationOptions.LongRunning, TaskScheduler.Default);
+        else
+            Task.Run(async () =>
+            {
+                await RunLoop();
+            });
     }
 
     /// <summary>
@@ -246,9 +264,18 @@ public class Throttle : IDisposable
     {
         this.Counter.Change();
 
+        //如果在1秒内没有新 task 进来，就 Delay ，释放CPU (SpinUntil 耗CPU)。
+        var d = 0;
         while (!token.IsCancellationRequested)
         {
-            this.mres.Wait(token);
+            //this.mres.Wait(token);
+            if (!SpinWait.SpinUntil(() => tskCount > 0, 10))
+            {
+                d = Math.Min(10, d + 1);
+                await Task.Delay(d * 100);
+                continue;
+            }
+            d = 0;
 
             try
             {
@@ -302,10 +329,10 @@ public class Throttle : IDisposable
 
             await this.Counter.WaitMoment();
 
-            if (!SpinWait.SpinUntil(() => this.tskCount > 0, 10))
-            {
-                this.mres.Reset();
-            }
+            //if (!SpinWait.SpinUntil(() => this.tskCount > 0, 10))
+            //{
+            //    this.mres.Reset();
+            //}
         }
     }
 
@@ -509,7 +536,7 @@ public class Throttle : IDisposable
                 }
 
                 this.cts.Dispose();
-                this.mres.Dispose();
+                //this.mres.Dispose();
             }
             isDisposed = true;
         }

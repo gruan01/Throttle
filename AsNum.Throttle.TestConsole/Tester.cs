@@ -27,7 +27,7 @@ namespace AsNum.Throttle.CoreTest
 
             this.Conn = ConnectionMultiplexer.Connect("localhost:6379");
             this.Counter = new RedisCounter(this.Conn, batchCount);
-            this.TS = new Throttle("test", period, boundry, counter: this.Counter, concurrentCount: 2);
+            this.TS = new Throttle("test", period, boundry, counter: this.Counter, concurrentCount: 2, tasklongRunningOption: false);
 
             this.TS.OnPeriodElapsed += Ts_OnPeriodElapsed;
         }
