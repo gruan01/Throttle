@@ -1,22 +1,23 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
-		<TargetFrameworks>net6;net8;net9</TargetFrameworks>
+		<TargetFrameworks>net8;net9;net10.0</TargetFrameworks>
 		<GeneratePackageOnBuild>false</GeneratePackageOnBuild>
 		<IncludeSymbols>true</IncludeSymbols>
 		<PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
 		<PackageTags>AsNum</PackageTags>
 		<GenerateAssemblyInfo>true</GenerateAssemblyInfo>
-		<PackageVersion>2.3.1.5</PackageVersion>
-		<AssemblyVersion>2.3.1.5</AssemblyVersion>
-		<FileVersion>2.3.1.5</FileVersion>
-		<Version>2.3.1.5</Version>
+		<PackageVersion>2.3.2</PackageVersion>
+		<AssemblyVersion>2.3.2</AssemblyVersion>
+		<FileVersion>2.3.2</FileVersion>
+		<Version>2.3.2</Version>
 		<Authors>xling</Authors>
 		<Description>Action / Func throttle in a period</Description>
 		<DocumentationFile>bin\$(Configuration)\$(TargetFramework)\$(AssemblyName).xml</DocumentationFile>
 		<RepositoryUrl>https://github.com/gruan01/Throttle</RepositoryUrl>
 		<PackageProjectUrl>https://github.com/gruan01/Throttle</PackageProjectUrl>
 		<Nullable>enable</Nullable>
+		<LangVersion>14</LangVersion>
 	</PropertyGroup>
 
 	<ItemGroup>

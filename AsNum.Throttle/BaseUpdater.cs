@@ -39,7 +39,7 @@ public abstract class BaseCfgUpdater
     /// <summary>
     /// 
     /// </summary>
-    private readonly List<IUpdate> subscribers = new();
+    private readonly List<IUpdate> subscribers = [];
 
     /// <summary>
     /// 通知更新

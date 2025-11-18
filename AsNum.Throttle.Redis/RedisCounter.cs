@@ -96,14 +96,11 @@ public class RedisCounter : BaseCounter
     /// /// <param name="rndSleepInMS">用于随机等待, 如果不等待, 太消耗CPU.</param>
     public RedisCounter(ConnectionMultiplexer connection, int batchCount = 1, int rndSleepInMS = 5)
     {
-        if (connection == null)
-            throw new ArgumentNullException(nameof(connection));
+        ArgumentNullException.ThrowIfNull(connection);
 
-        if (batchCount <= 0)
-            throw new ArgumentOutOfRangeException($"{nameof(batchCount)} must greate than 0");
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(batchCount);
 
-        if (rndSleepInMS <= 0)
-            throw new ArgumentOutOfRangeException($"{nameof(rndSleepInMS)} must greate than 0");
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(rndSleepInMS);
 
         this.db = connection.GetDatabase();
         this.subscriber = connection.GetSubscriber();

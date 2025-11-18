@@ -5,21 +5,12 @@ namespace AsNum.Throttle;
 /// <summary>
 /// 
 /// </summary>
-public class WrapLogger : ILogger
+/// <remarks>
+/// 
+/// </remarks>
+/// <param name="func"></param>
+public class WrapLogger(Action<string?, Exception?> func) : ILogger
 {
-    /// <summary>
-    /// 
-    /// </summary>
-    private readonly Action<string?, Exception?> func;
-
-    /// <summary>
-    /// 
-    /// </summary>
-    /// <param name="func"></param>
-    public WrapLogger(Action<string?, Exception?> func)
-    {
-        this.func = func;
-    }
 
     /// <summary>
     /// 
@@ -28,6 +19,6 @@ public class WrapLogger : ILogger
     /// <param name="e"></param>
     public void Log(string? message, Exception? e)
     {
-        this.func?.Invoke(message, e);
+        func?.Invoke(message, e);
     }
 }
