@@ -96,6 +96,24 @@ public abstract class BaseCounter : IUpdate, IDisposable
     }
 
     /// <summary>
+    /// 原子检查并增加计数，用于 Select 模式。
+    /// 检查当前计数是否小于频率，如果是则原子增加并返回 true，否则返回 false。
+    /// 默认实现保留原来的两步操作（CurrentCount + IncrementCount），
+    /// 子类应覆盖此方法以提供原子实现。
+    /// </summary>
+    /// <returns>是否允许执行</returns>
+    public virtual async Task<bool> TrySelectAsync()
+    {
+        var currCount = await this.CurrentCount();
+        if (currCount < this.Frequency)
+        {
+            await this.IncrementCount(1);
+            return true;
+        }
+        return false;
+    }
+
+    /// <summary>
     /// 
     /// </summary>
     protected void ResetFired()

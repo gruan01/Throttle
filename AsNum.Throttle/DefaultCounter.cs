@@ -117,6 +117,25 @@ internal sealed class DefaultCounter : BaseCounter, IAutoDispose
     }
 
     /// <summary>
+    /// 原子检查并增加计数，无锁 CAS 实现
+    /// </summary>
+    /// <returns></returns>
+    public override Task<bool> TrySelectAsync()
+    {
+        while (true)
+        {
+            var curr = this._currentCount;
+            if (curr >= this.Frequency)
+                return Task.FromResult(false);
+#pragma warning disable IDISP025 // 这里 Interlocked.CompareExchange 的 ref 语义要求同一个字段
+            var result = Interlocked.CompareExchange(ref this._currentCount, curr + 1, curr);
+#pragma warning restore IDISP025
+            if (result == curr)
+                return Task.FromResult(true);
+        }
+    }
+
+    /// <summary>
     /// 
     /// </summary>
     /// <returns></returns>

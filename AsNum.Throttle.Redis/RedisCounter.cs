@@ -81,12 +81,40 @@ public class RedisCounter : BaseCounter
         redis.call("expire" , @k, @e, "NX")
         """;
 
+    //Redis 7 以下版本使用 — 原子检查+增加
+    private static readonly string selectLuaScriptOld = """
+        local current = redis.call("GET" , @k)
+        if(current and tonumber(current) >= tonumber(@f))
+        then
+            return 0
+        end
+        local new = redis.call("INCRBY" , @k, 1)
+        if new == 1 then
+            redis.call("expire" , @k, @e)
+        end
+        return 1
+        """;
+
+    //Redis 7 以上版本使用 — 原子检查+增加
+    private static readonly string selectLuaScript7 = """
+        local current = redis.call("GET" , @k)
+        if(current and tonumber(current) >= tonumber(@f))
+        then
+            return 0
+        end
+        local new = redis.call("INCRBY" , @k, 1)
+        redis.call("expire" , @k, @e, "NX")
+        return 1
+        """;
+
     private readonly LuaScript incrByLuaScript;
+    private readonly LuaScript selectLuaScript;
 
     /// <summary>
     /// 
     /// </summary>
     private readonly LoadedLuaScript loadedIncrByLuaScript;
+    private readonly LoadedLuaScript loadedSelectLuaScript;
 
     /// <summary>
     /// 
@@ -115,12 +143,19 @@ public class RedisCounter : BaseCounter
         var v = server.Version;
 
         if (v.Major < 7)
+        {
             this.incrByLuaScript = LuaScript.Prepare(incrByLuaScriptOld);
+            this.selectLuaScript = LuaScript.Prepare(selectLuaScriptOld);
+        }
         else
+        {
             this.incrByLuaScript = LuaScript.Prepare(incrByLuaScript7);
+            this.selectLuaScript = LuaScript.Prepare(selectLuaScript7);
+        }
 
         //https://stackexchange.github.io/StackExchange.Redis/Scripting.html#:~:text=StackExchange.Redis%20handles%20Lua%20script%20caching%20internally.%20It%20automatically
         this.loadedIncrByLuaScript = incrByLuaScript.Load(server, CommandFlags.DemandMaster);
+        this.loadedSelectLuaScript = selectLuaScript.Load(server, CommandFlags.DemandMaster);
     }
 
 
@@ -204,6 +239,29 @@ public class RedisCounter : BaseCounter
         {
             //await this.db.StringSetAsync(this.countKey, a, this.Period, flags: CommandFlags.DemandMaster);
             this.Logger?.Log(ex.Message, ex);
+        }
+    }
+
+
+    /// <summary>
+    /// 原子检查并增加计数，1 次 Redis 往返
+    /// </summary>
+    public override async Task<bool> TrySelectAsync()
+    {
+        try
+        {
+            var result = await loadedSelectLuaScript.EvaluateAsync(this.db, new
+            {
+                k = (RedisKey)this.countKey,
+                f = this.Frequency,
+                e = (int)this.Period.TotalSeconds
+            });
+            return (int)result == 1;
+        }
+        catch (Exception ex)
+        {
+            this.Logger?.Log(ex.Message, ex);
+            return true;
         }
     }
 

@@ -456,14 +456,7 @@ public class Throttle : IDisposable
     {
         try
         {
-            //当前计数
-            var currCount = await this.Counter.CurrentCount();
-            var flag = currCount < this.Counter.Frequency;
-            if (flag)
-            {
-                await this.Counter.IncrementCount(1);
-            }
-            return flag;
+            return await this.Counter.TrySelectAsync();
         }
         catch (Exception e)
         {
