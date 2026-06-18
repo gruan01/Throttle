@@ -233,7 +233,7 @@ public class RedisCounter : BaseCounter
                 k = (RedisKey)this.countKey,
                 v = (int)a,
                 e = (int)this.Period.TotalSeconds
-            });
+            }, default(RedisKey), CommandFlags.DemandMaster);
         }
         catch (Exception ex)
         {
@@ -255,7 +255,7 @@ public class RedisCounter : BaseCounter
                 k = (RedisKey)this.countKey,
                 f = this.Frequency,
                 e = (int)this.Period.TotalSeconds
-            });
+            }, default(RedisKey), CommandFlags.DemandMaster);
             return (int)result == 1;
         }
         catch (Exception ex)

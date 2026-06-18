@@ -209,7 +209,7 @@ namespace AsNum.Throttle.UnitTest
                 Assert.Equal(frequency, (int)await db.StringGetAsync(countKey));
 
                 // ========== 2. 周期重置 ==========
-                await db.KeyDeleteAsync(countKey);
+                await db.KeyDeleteAsync(countKey, CommandFlags.DemandMaster);
                 await Task.Delay(500);
 
                 var c2 = new RedisCounter(conn);
@@ -220,12 +220,12 @@ namespace AsNum.Throttle.UnitTest
                 await Task.Delay(2500);           // 等待 key 过期
 
                 Assert.True(await t2.Select());   // key 已过期，重新通过
-                await db.KeyDeleteAsync(countKey);
+                await db.KeyDeleteAsync(countKey, CommandFlags.DemandMaster);
                 await Task.Delay(300);
 
                 // ========== 3. 集群并发：原子性验证 ==========
                 // 模拟 8 节点集群同时高频调用，共享同一 Redis key
-                // 每个节点有独立的 RedisCounter 实例（独立 Lua 脚本缓存）
+                // 每个节点有独立的 RedisCounter 实例
                 var globalPassed = 0;
                 var globalRejected = 0;
 
@@ -236,11 +236,10 @@ namespace AsNum.Throttle.UnitTest
                     {
                         var nodeCounter = new RedisCounter(conn);
                         var nodeThrottle = new Throttle(testName,
-                            TimeSpan.FromSeconds(10), frequency,
+                            TimeSpan.FromSeconds(30), frequency,
                             counter: nodeCounter,
                             isSelectMode: true);
 
-                        // 节点内短时间高频调用
                         var localPassed = 0;
                         var localRejected = 0;
                         for (var i = 0; i < callsPerNode; i++)
@@ -258,7 +257,6 @@ namespace AsNum.Throttle.UnitTest
 
                 await Task.WhenAll(nodeTasks);
 
-                // — 只应恰好有 frequency 个请求通过 —
                 Assert.Equal(frequency, globalPassed);
                 Assert.Equal(totalCalls - frequency, globalRejected);
 
@@ -268,7 +266,7 @@ namespace AsNum.Throttle.UnitTest
             }
             finally
             {
-                await db.KeyDeleteAsync(countKey);
+                await db.KeyDeleteAsync(countKey, CommandFlags.DemandMaster);
             }
         }
     }
