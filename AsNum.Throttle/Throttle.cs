@@ -86,6 +86,35 @@ public class Throttle : IDisposable
     private readonly CancellationToken token;
 
     /// <summary>
+    /// 首次 Select/Execute 时异步初始化 Updater（如从 Redis 加载配置）
+    /// </summary>
+    private int updaterInitialized = 0;
+    private readonly SemaphoreSlim updaterInitLock = new(1, 1);
+
+    /// <summary>
+    /// 确保 Updater 已完成异步初始化（幂等、线程安全）
+    /// </summary>
+    private async Task EnsureUpdaterInitializedAsync()
+    {
+        if (Interlocked.CompareExchange(ref updaterInitialized, 0, 0) == 1)
+            return;
+
+        await updaterInitLock.WaitAsync();
+        try
+        {
+            if (Interlocked.CompareExchange(ref updaterInitialized, 0, 0) == 1)
+                return;
+
+            await this.Updater.InitializeAsync();
+            Interlocked.Exchange(ref updaterInitialized, 1);
+        }
+        finally
+        {
+            updaterInitLock.Release();
+        }
+    }
+
+    /// <summary>
     /// 
     /// </summary>
     private readonly bool tasklongRunningOption;
@@ -202,6 +231,8 @@ public class Throttle : IDisposable
     /// <param name="task"></param>
     private async Task Enqueue(Task task)
     {
+        await EnsureUpdaterInitializedAsync();
+
         this.Unwrap(task);
 
         try
@@ -454,6 +485,8 @@ public class Throttle : IDisposable
     /// <returns></returns>
     public async Task<bool> Select()
     {
+        await EnsureUpdaterInitializedAsync();
+
         try
         {
             return await this.Counter.TrySelectAsync();
@@ -522,13 +555,19 @@ public class Throttle : IDisposable
                     this.Blocker.Dispose();
                 }
 
-                if (this.Counter != null && this.Counter is IAutoDispose)
+                if (this.Counter != null)
                 {
+                    // 无条件取消事件订阅，防止注入的非 IAutoDispose Counter 导致内存泄漏
                     this.Counter.OnReset -= Counter_OnReset;
-                    this.Counter.Dispose();
+
+                    if (this.Counter is IAutoDispose)
+                    {
+                        this.Counter.Dispose();
+                    }
                 }
 
                 this.cts.Dispose();
+                this.updaterInitLock.Dispose();
                 //this.mres.Dispose();
             }
             isDisposed = true;

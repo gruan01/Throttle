@@ -8,10 +8,10 @@
 		<GenerateAssemblyInfo>false</GenerateAssemblyInfo>
 		<PackageTags>AsNum</PackageTags>
 		<GenerateAssemblyInfo>true</GenerateAssemblyInfo>
-		<PackageVersion>2.3.3</PackageVersion>
-		<AssemblyVersion>2.3.3</AssemblyVersion>
-		<FileVersion>2.3.3</FileVersion>
-		<Version>2.3.3</Version>
+		<PackageVersion>2.4.0</PackageVersion>
+		<AssemblyVersion>2.4.0</AssemblyVersion>
+		<FileVersion>2.4.0</FileVersion>
+		<Version>2.4.0</Version>
 		<Authors>xling</Authors>
 		<LangVersion>14</LangVersion>
 		<DocumentationFile>bin\$(Configuration)\$(TargetFramework)\$(AssemblyName).xml</DocumentationFile>

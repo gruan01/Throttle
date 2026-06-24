@@ -7,10 +7,10 @@
 		<PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
 		<PackageTags>AsNum</PackageTags>
 		<GenerateAssemblyInfo>true</GenerateAssemblyInfo>
-		<PackageVersion>2.3.3</PackageVersion>
-		<AssemblyVersion>2.3.3</AssemblyVersion>
-		<FileVersion>2.3.3</FileVersion>
-		<Version>2.3.3</Version>
+		<PackageVersion>2.4.0</PackageVersion>
+		<AssemblyVersion>2.4.0</AssemblyVersion>
+		<FileVersion>2.4.0</FileVersion>
+		<Version>2.4.0</Version>
 		<Authors>xling</Authors>
 		<Description>Action / Func throttle in a period</Description>
 		<DocumentationFile>bin\$(Configuration)\$(TargetFramework)\$(AssemblyName).xml</DocumentationFile>
@@ -24,6 +24,10 @@
 		<Compile Remove="packages\**" />
 		<EmbeddedResource Remove="packages\**" />
 		<None Remove="packages\**" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<InternalsVisibleTo Include="AsNum.Throttle.UnitTest" />
 	</ItemGroup>
 
 	<ItemGroup>

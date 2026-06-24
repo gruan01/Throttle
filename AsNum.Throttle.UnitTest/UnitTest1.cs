@@ -1,6 +1,8 @@
+using AsNum.Throttle;
 using AsNum.Throttle.Redis;
 using StackExchange.Redis;
 using System.Diagnostics;
+using System.Threading.Channels;
 
 namespace AsNum.Throttle.UnitTest
 {
@@ -266,6 +268,135 @@ namespace AsNum.Throttle.UnitTest
             }
             finally
             {
+                await db.KeyDeleteAsync(countKey, CommandFlags.DemandMaster);
+            }
+        }
+
+        // ========== 变更覆盖测试 ==========
+
+        /// <summary>
+        /// 验证 DefaultBlock 在 Initialize 通道交换时，Acquire/Release 不抛异常、计数不乱
+        /// </summary>
+        [Fact]
+        public async Task DefaultBlock_ConcurrentChannelSwap_NoCorruption()
+        {
+            const int initialFreq = 20;
+            const int newFreq = 5;
+
+            var block = new DefaultBlock();
+            block.Setup(initialFreq, null);
+
+            // 占用 5 个槽位
+            for (var i = 0; i < 5; i++)
+                await block.Acquire();
+
+            // 同步触发配置更新（通道交换），同时并发 Acquire
+            var initDone = new TaskCompletionSource();
+            var acquireTask = Task.Run(async () =>
+            {
+                await initDone.Task;
+                await block.Acquire();
+            });
+
+            // 模拟配置更新：频率从 20 → 5，通道重建（Update 内部同步完成，返回 CompletedTask）
+            _ = ((IUpdate)block).Update(TimeSpan.FromSeconds(1), newFreq);
+            // 关键：先 Release 一个槽位解除 Acquire 的阻塞，再 await acquireTask
+            initDone.SetResult();
+            await block.Release();   // 释放一个槽位 → Acquire 解除阻塞
+            await acquireTask;      // 现在可以完成了
+
+            // 清理：释放剩余槽位（5 个转移 + 1 个新 Acquire 已释放，剩 5 个）
+            for (var i = 0; i < 5; i++)
+                await block.Release();
+        }
+
+        /// <summary>
+        /// 验证 DefaultBlock.Dispose 后通道被 Complete，后续 Acquire 快速失败不挂起
+        /// </summary>
+        [Fact]
+        public async Task DefaultBlock_Dispose_CompletesChannel()
+        {
+            var block = new DefaultBlock();
+            block.Setup(1, null); // 容量 1，无超时
+
+            await block.Acquire(); // 占满唯一槽位
+
+            // 不 Release，直接 Dispose
+            block.Dispose();
+
+            // Acquire 应立即失败（通道已关闭），而非永久挂起
+            var sw = Stopwatch.StartNew();
+            await Assert.ThrowsAsync<ChannelClosedException>(
+                () => block.Acquire());
+            sw.Stop();
+
+            Assert.True(sw.ElapsedMilliseconds < 1000,
+                $"Acquire after Dispose should fail fast, took {sw.ElapsedMilliseconds}ms");
+        }
+
+        /// <summary>
+        /// 验证 Throttle.Dispose 后，无论 Counter 是否实现 IAutoDispose，
+        /// OnReset 事件都被取消订阅
+        /// </summary>
+        [Fact]
+        public void Throttle_Dispose_AlwaysUnsubscribesCounterEvent()
+        {
+            var counter = new TestableDefaultCounter();
+            var periodElapsedCount = 0;
+
+            var throttle = new Throttle("test-dispose", TimeSpan.FromMinutes(1), 1,
+                counter: counter);
+            throttle.OnPeriodElapsed += (_, _) => periodElapsedCount++;
+
+            // Dispose 前：事件正常触发
+            counter.TriggerReset();
+            Assert.Equal(1, periodElapsedCount);
+
+            // Dispose
+            throttle.Dispose();
+
+            // Dispose 后：事件不应再触发
+            counter.TriggerReset();
+            Assert.Equal(1, periodElapsedCount); // 仍是 1
+        }
+
+        /// <summary>
+        /// 辅助类：暴露 BaseCounter.ResetFired() 供测试
+        /// </summary>
+        private sealed class TestableDefaultCounter : DefaultCounter
+        {
+            public void TriggerReset() => this.ResetFired();
+        }
+
+        /// <summary>
+        /// 验证 RedisCounter 构造时不再同步调用 LuaScript.Load，
+        /// 首次 EvaluateAsync 自动完成脚本加载（延迟加载）
+        /// </summary>
+        [Fact]
+        public async Task RedisCounter_LazyScriptLoad_FirstCallSucceeds()
+        {
+            var conn = ConnectionMultiplexer.Connect("localhost:6379");
+            var testName = $"LSL:{Guid.NewGuid():N}";
+            var countKey = $"{testName}:counter:count";
+
+            try
+            {
+                var counter = new RedisCounter(conn);
+                var throttle = new Throttle(testName, TimeSpan.FromSeconds(5), 5,
+                    counter: counter, isSelectMode: true);
+
+                // 首次调用 — 脚本未预热，LuaScript.EvaluateAsync 内部自动 SCRIPT LOAD + EVAL
+                var result = await throttle.Select();
+                Assert.True(result);
+
+                // 验证 Redis 端计数正确
+                var db = conn.GetDatabase();
+                var count = (int)await db.StringGetAsync(countKey);
+                Assert.Equal(1, count);
+            }
+            finally
+            {
+                var db = conn.GetDatabase();
                 await db.KeyDeleteAsync(countKey, CommandFlags.DemandMaster);
             }
         }

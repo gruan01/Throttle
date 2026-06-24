@@ -7,7 +7,7 @@ namespace AsNum.Throttle;
 /// <summary>
 /// 
 /// </summary>
-internal sealed class DefaultCounter : BaseCounter, IAutoDispose
+internal class DefaultCounter : BaseCounter, IAutoDispose
 {
 
     /// <summary>

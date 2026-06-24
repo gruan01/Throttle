@@ -113,12 +113,6 @@ public class RedisCounter : BaseCounter
     /// <summary>
     /// 
     /// </summary>
-    private readonly LoadedLuaScript loadedIncrByLuaScript;
-    private readonly LoadedLuaScript loadedSelectLuaScript;
-
-    /// <summary>
-    /// 
-    /// </summary>
     /// <param name="connection"></param>
     /// <param name="batchCount">批大小; 为保证公平, 这个数字越小越好; 但是为了减少与 Redis 之间的通讯, 这个值越大越好.</param>
     /// /// <param name="rndSleepInMS">用于随机等待, 如果不等待, 太消耗CPU.</param>
@@ -153,9 +147,8 @@ public class RedisCounter : BaseCounter
             this.selectLuaScript = LuaScript.Prepare(selectLuaScript7);
         }
 
-        //https://stackexchange.github.io/StackExchange.Redis/Scripting.html#:~:text=StackExchange.Redis%20handles%20Lua%20script%20caching%20internally.%20It%20automatically
-        this.loadedIncrByLuaScript = incrByLuaScript.Load(server, CommandFlags.DemandMaster);
-        this.loadedSelectLuaScript = selectLuaScript.Load(server, CommandFlags.DemandMaster);
+        // LuaScript.EvaluateAsync 内部自动处理脚本缓存：先试 EVALSHA，NOSCRIPT 时自动 SCRIPT LOAD + EVAL
+        // 不在此处同步调用 Load()，避免阻塞线程和累积 sync-ops
     }
 
 
@@ -228,7 +221,7 @@ public class RedisCounter : BaseCounter
     {
         try
         {
-            _ = await loadedIncrByLuaScript.EvaluateAsync(this.db, new
+            _ = await incrByLuaScript.EvaluateAsync(this.db, new
             {
                 k = (RedisKey)this.countKey,
                 v = (int)a,
@@ -250,7 +243,7 @@ public class RedisCounter : BaseCounter
     {
         try
         {
-            var result = await loadedSelectLuaScript.EvaluateAsync(this.db, new
+            var result = await selectLuaScript.EvaluateAsync(this.db, new
             {
                 k = (RedisKey)this.countKey,
                 f = this.Frequency,

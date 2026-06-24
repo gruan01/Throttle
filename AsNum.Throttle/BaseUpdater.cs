@@ -85,9 +85,22 @@ public abstract class BaseCfgUpdater
     }
 
     /// <summary>
-    /// 
+    /// 同步初始化（仅赋值属性，不做 I/O）。
+    /// 子类如需异步初始化（如 Redis），应重写 <see cref="InitializeAsync"/>。
     /// </summary>
-    protected abstract (TimeSpan exPeriod, int exFrquency) Initialize(TimeSpan period, int frequency);
+    protected virtual (TimeSpan exPeriod, int exFrquency) Initialize(TimeSpan period, int frequency)
+    {
+        return (period, frequency);
+    }
+
+    /// <summary>
+    /// 异步初始化。默认无操作。
+    /// 需要异步 I/O 的子类（如 RedisCfgUpdater）应重写此方法。
+    /// </summary>
+    public virtual Task InitializeAsync()
+    {
+        return Task.CompletedTask;
+    }
 
 
     /// <summary>
