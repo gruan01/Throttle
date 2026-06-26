@@ -169,6 +169,7 @@ public class Throttle : IDisposable
 
 
         this.Counter = counter ?? new DefaultCounter();
+        this.Counter.IsSelectMode = isSelectMode;
         this.Counter.SetUp(throttleName, throttleID, frequency, period, lockTimeout, logger);
         this.Counter.OnReset += Counter_OnReset;
 

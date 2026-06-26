@@ -52,6 +52,11 @@ public abstract class BaseCounter : IUpdate, IDisposable
     public abstract int BatchCount { get; }
 
     /// <summary>
+    /// 是否为 Select 模式。Select 模式下无需订阅计数器周期变更。
+    /// </summary>
+    internal bool IsSelectMode { get; set; }
+
+    /// <summary>
     /// 
     /// </summary>
     public abstract Task<uint> CurrentCount();

@@ -162,15 +162,19 @@ public class RedisCounter : BaseCounter
             this.countKey = this.ThrottleName.ToCounterCountKey();
             this.lockKey = this.ThrottleName.ToCounterLockKey();
 
-            this.subscriber.Subscribe(KEY_EXPIRED_CHANNEL, (channel, value) =>
+            // Select 模式下无需监听 Redis key 过期事件（不走 RunLoop，不依赖周期重置回调）
+            if (!this.IsSelectMode)
             {
-                var v = (string?)value;
-                //if (value == this.countKey)
-                if (string.Equals(v, this.countKey))
+                this.subscriber.Subscribe(KEY_EXPIRED_CHANNEL, (channel, value) =>
                 {
-                    this.ResetFired();
-                }
-            });
+                    var v = (string?)value;
+                    //if (value == this.countKey)
+                    if (string.Equals(v, this.countKey))
+                    {
+                        this.ResetFired();
+                    }
+                });
+            }
         }
     }
 
