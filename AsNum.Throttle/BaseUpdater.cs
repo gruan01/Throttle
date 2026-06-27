@@ -113,6 +113,9 @@ public abstract class BaseCfgUpdater
         if (newPeriod == this.Period && newFrequency == this.Frequency)
             return;
 
+        // 确保异步初始化已完成（如 Redis 订阅），再执行保存和跨进程通知
+        await this.InitializeAsync();
+
         var oldPeriod = this.Period;
         var oldFrequency = this.Frequency;
 

@@ -1,5 +1,6 @@
 ﻿using StackExchange.Redis;
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace AsNum.Throttle.Redis
@@ -34,8 +35,12 @@ namespace AsNum.Throttle.Redis
 
         private bool firstLoad = true;
 
+        /// <summary>
+        /// 防止 InitializeAsync 重试时重复订阅（SubscribeAsync 成功但后续操作失败时）
+        /// </summary>
+        private int subscribed = 0;
 
-        private RedisChannel Channnel { get; }
+        private RedisChannel channnel;
 
         /// <summary>
         /// 
@@ -48,13 +53,12 @@ namespace AsNum.Throttle.Redis
 
             this.db = connection.GetDatabase();
             this.subscriber = connection.GetSubscriber();
-            this.Channnel = new($"{this.ThrottleName}CfgChanged", RedisChannel.PatternMode.Auto);
         }
 
 
         /// <summary>
-        /// 同步初始化：设置 key 名、订阅 PubSub（必须在构造时完成，确保能收到后续 Update 消息）。
-        /// 异步 Redis I/O 放在 <see cref="InitializeAsync"/> 中。
+        /// 同步初始化：仅设置 key 名，不做 Redis I/O。
+        /// PubSub 订阅移至 <see cref="InitializeAsync"/> 中异步完成。
         /// </summary>
         protected override (TimeSpan exPeriod, int exFrquency) Initialize(TimeSpan period, int frequency)
         {
@@ -66,19 +70,26 @@ namespace AsNum.Throttle.Redis
             this.keyFrequency = $"{this.ThrottleName}:frequency";
             this.keyPeriod = $"{this.ThrottleName}:period";
 
-            //订阅消息 — 必须在构造时完成，不能延迟，否则收不到其他实例的 Update
-            this.subscriber.Subscribe(this.Channnel, async (c, v) => await UpdateFromSubscribe(v));
+            // 此时 ThrottleName 已由 SetUp 赋值，channel 名正确
+            this.channnel = new($"{this.ThrottleName}CfgChanged", RedisChannel.PatternMode.Auto);
 
             // SetUp 阶段不做 Redis I/O，值由调用方 SetUp 直接赋给 this.Period / this.Frequency
             return (period, frequency);
         }
 
         /// <summary>
-        /// 异步初始化：从 Redis 读取已有配置、保存当前配置。
+        /// 异步初始化：订阅 PubSub、从 Redis 读取已有配置、保存当前配置。
         /// 由 Throttle 在首次 Select/Execute 时自动调用，消费方无需感知。
         /// </summary>
         public override async Task InitializeAsync()
         {
+            //订阅消息 — 异步完成，避免启动时同步 Subscribe 超时
+            // Interlocked 守卫：即使 InitializeAsync 被重试，也只订阅一次，防止重复 handler
+            if (Interlocked.CompareExchange(ref subscribed, 1, 0) == 0)
+            {
+                await this.subscriber.SubscribeAsync(this.channnel, async (c, v) => await UpdateFromSubscribe(v));
+            }
+
             //把初始化配置保存到 redis 中；如果存在则跳过。
             var (exPeriod, exFrequency) = await this.SaveToRedisAsync(this.Period, this.Frequency, false);
 
@@ -167,7 +178,7 @@ namespace AsNum.Throttle.Redis
         protected override async Task Save(TimeSpan newPeriod, int newFrequency)
         {
             await this.SaveToRedisAsync(newPeriod, newFrequency, true);
-            await this.subscriber.PublishAsync(this.Channnel, this.ThrottleID);
+            await this.subscriber.PublishAsync(this.channnel, this.ThrottleID);
         }
 
 
@@ -204,7 +215,7 @@ namespace AsNum.Throttle.Redis
             {
                 if (flag)
                 {
-                    this.subscriber?.Unsubscribe(this.Channnel);
+                    this.subscriber?.Unsubscribe(this.channnel);
                 }
                 isDisposed = true;
             }

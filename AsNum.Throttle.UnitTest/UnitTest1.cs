@@ -39,8 +39,8 @@ namespace AsNum.Throttle.UnitTest
             var t2 = new Throttle("test", TimeSpan.FromMinutes(1), 1, updater: u2, logger: logger);
             var t3 = new Throttle("test", TimeSpan.FromMinutes(2), 2, updater: u3, logger: logger);
 
-
-
+            // 显式初始化所有 Updater（SubscribeAsync 已从构造器移至异步初始化）
+            await Task.WhenAll(u1.InitializeAsync(), u2.InitializeAsync(), u3.InitializeAsync());
 
             var minute = 2;
             var frequency = 2;
@@ -399,6 +399,242 @@ namespace AsNum.Throttle.UnitTest
                 var db = conn.GetDatabase();
                 await db.KeyDeleteAsync(countKey, CommandFlags.DemandMaster);
             }
+        }
+
+        // ========== RedisCfgUpdater InitializeAsync 变更覆盖测试 ==========
+
+        /// <summary>
+        /// 场景：客户端初始化 1s/100，Redis 中已有 1s/150 →
+        ///       InitializeAsync 应从 Redis catch-up，正确更新到 150
+        /// </summary>
+        [Fact]
+        public async Task RedisCfgUpdater_InitializeAsync_CatchesUpWithRedisConfig()
+        {
+            var conn = ConnectionMultiplexer.Connect("localhost:6379");
+            var testName = $"CFG_CU:{Guid.NewGuid():N}";
+            var db = conn.GetDatabase();
+
+            try
+            {
+                // 预设 Redis：period=1s (1000ms), frequency=150
+                await db.StringSetAsync($"{testName}:period", "1000");
+                await db.StringSetAsync($"{testName}:frequency", "150");
+
+                var updater = new RedisCfgUpdater(conn);
+                var throttle = new Throttle(testName, TimeSpan.FromSeconds(1), 100,
+                    updater: updater, isSelectMode: true);
+
+                // 构造后尚未异步初始化，应保留构造参数
+                Assert.Equal(100, updater.Frequency);
+                Assert.Equal(TimeSpan.FromSeconds(1), updater.Period);
+
+                // 触发 InitializeAsync（通过 Select）
+                await throttle.Select();
+
+                // 应从 Redis catch-up：frequency 100→150
+                Assert.Equal(150, updater.Frequency);
+                Assert.Equal(TimeSpan.FromSeconds(1), updater.Period);
+                Assert.Equal(150, throttle.Counter.Frequency);
+            }
+            finally
+            {
+                await db.KeyDeleteAsync($"{testName}:period");
+                await db.KeyDeleteAsync($"{testName}:frequency");
+            }
+        }
+
+        /// <summary>
+        /// 场景：客户端初始化 1s/100，Redis 中也是 1s/100 →
+        ///       InitializeAsync 不应触发无意义的 NotifyChange
+        /// </summary>
+        [Fact]
+        public async Task RedisCfgUpdater_InitializeAsync_NoChangeWhenConfigMatches()
+        {
+            var conn = ConnectionMultiplexer.Connect("localhost:6379");
+            var testName = $"CFG_NC:{Guid.NewGuid():N}";
+            var db = conn.GetDatabase();
+
+            try
+            {
+                // 预设 Redis 与客户端一致
+                await db.StringSetAsync($"{testName}:period", "1000");
+                await db.StringSetAsync($"{testName}:frequency", "100");
+
+                var updater = new RedisCfgUpdater(conn);
+                var throttle = new Throttle(testName, TimeSpan.FromSeconds(1), 100,
+                    updater: updater, isSelectMode: true);
+
+                await throttle.Select();
+
+                // 配置一致，不应变更
+                Assert.Equal(100, updater.Frequency);
+                Assert.Equal(TimeSpan.FromSeconds(1), updater.Period);
+            }
+            finally
+            {
+                await db.KeyDeleteAsync($"{testName}:period");
+                await db.KeyDeleteAsync($"{testName}:frequency");
+            }
+        }
+
+        /// <summary>
+        /// 场景：Redis 中无配置（首次启动）→
+        ///       InitializeAsync 写入当前配置，客户端保持原值
+        /// </summary>
+        [Fact]
+        public async Task RedisCfgUpdater_InitializeAsync_FirstClientWritesToRedis()
+        {
+            var conn = ConnectionMultiplexer.Connect("localhost:6379");
+            var testName = $"CFG_FC:{Guid.NewGuid():N}";
+            var db = conn.GetDatabase();
+
+            try
+            {
+                // 确保 Redis 中没有旧数据
+                await db.KeyDeleteAsync($"{testName}:period");
+                await db.KeyDeleteAsync($"{testName}:frequency");
+
+                var updater = new RedisCfgUpdater(conn);
+                var throttle = new Throttle(testName, TimeSpan.FromSeconds(2), 200,
+                    updater: updater, isSelectMode: true);
+
+                await throttle.Select();
+
+                // 客户端保持原值
+                Assert.Equal(200, updater.Frequency);
+                Assert.Equal(TimeSpan.FromSeconds(2), updater.Period);
+
+                // Redis 中应写入当前值
+                var fStr = await db.StringGetAsync($"{testName}:frequency");
+                var pStr = await db.StringGetAsync($"{testName}:period");
+                Assert.Equal(200, (int)fStr);
+                Assert.Equal(2000, (int)pStr);
+            }
+            finally
+            {
+                await db.KeyDeleteAsync($"{testName}:period");
+                await db.KeyDeleteAsync($"{testName}:frequency");
+            }
+        }
+
+        /// <summary>
+        /// 场景：Redis 中有部分残留数据（只有 period，没有 frequency）→
+        ///       不应崩溃，frequency 保持客户端原值
+        /// </summary>
+        [Fact]
+        public async Task RedisCfgUpdater_InitializeAsync_HandlesPartialRedisConfig()
+        {
+            var conn = ConnectionMultiplexer.Connect("localhost:6379");
+            var testName = $"CFG_PC:{Guid.NewGuid():N}";
+            var db = conn.GetDatabase();
+
+            try
+            {
+                // 只设 period（模拟部分残留）
+                await db.StringSetAsync($"{testName}:period", "3000"); // 3s
+                await db.KeyDeleteAsync($"{testName}:frequency");       // frequency 不存在
+
+                var updater = new RedisCfgUpdater(conn);
+                var throttle = new Throttle(testName, TimeSpan.FromSeconds(1), 50,
+                    updater: updater, isSelectMode: true);
+
+                await throttle.Select();
+
+                // frequency 从 Redis 读到 0 → NotifyChange 条件不满足 → 保持原值
+                Assert.Equal(50, updater.Frequency);
+            }
+            finally
+            {
+                await db.KeyDeleteAsync($"{testName}:period");
+                await db.KeyDeleteAsync($"{testName}:frequency");
+            }
+        }
+
+        /// <summary>
+        /// 验证 Initialize 阶段不触发 Redis I/O（订阅已移至 InitializeAsync），
+        /// 构造 Throttle 不会因 Redis 超时而抛异常
+        /// </summary>
+        [Fact]
+        public void RedisCfgUpdater_Initialize_DoesNotCallRedisIO()
+        {
+            var conn = ConnectionMultiplexer.Connect("localhost:6379");
+            var testName = $"CFG_NIO:{Guid.NewGuid():N}";
+
+            // 构造 Throttle → SetUp → Initialize：不应有 Redis I/O
+            // 如果 Initialize 中有同步 Subscribe/网络 I/O，超时会抛异常
+            var updater = new RedisCfgUpdater(conn);
+            var throttle = new Throttle(testName, TimeSpan.FromSeconds(1), 10,
+                updater: updater, isSelectMode: true);
+
+            // 构造完成，未抛异常
+            Assert.Equal(10, updater.Frequency);
+            Assert.Equal(TimeSpan.FromSeconds(1), updater.Period);
+        }
+
+        /// <summary>
+        /// 验证 Update 自动触发 InitializeAsync（无需显式调用），
+        /// 且跨进程通知正常工作。
+        /// </summary>
+        [Fact]
+        public async Task RedisCfgUpdater_Update_AutoInitializesAndPropagates()
+        {
+            var conn = ConnectionMultiplexer.Connect("localhost:6379");
+            var testName = $"CFG_UA:{Guid.NewGuid():N}";
+            var db = conn.GetDatabase();
+
+            try
+            {
+                var u1 = new RedisCfgUpdater(conn);
+                var u2 = new RedisCfgUpdater(conn);
+
+                var t1 = new Throttle(testName, TimeSpan.FromMinutes(1), 10,
+                    updater: u1, isSelectMode: true);
+                var t2 = new Throttle(testName, TimeSpan.FromMinutes(1), 10,
+                    updater: u2, isSelectMode: true);
+
+                // u1.Update 应自动触发 InitializeAsync（订阅 + 保存 + 发布）
+                // 无需显式调用 InitializeAsync
+                await u1.Update(TimeSpan.FromMinutes(2), 20);
+
+                // u1 自身应立即更新
+                Assert.Equal(20, u1.Frequency);
+                Assert.Equal(TimeSpan.FromMinutes(2), u1.Period);
+                Assert.Equal(20, t1.Counter.Frequency);
+
+                // u2 尚未初始化，需要先触发才能收到 PubSub 消息
+                await u2.InitializeAsync();
+                // InitializeAsync 从 Redis 读取已有配置，应 catch-up 到 u1 发布的值
+                Assert.Equal(20, u2.Frequency);
+                Assert.Equal(TimeSpan.FromMinutes(2), u2.Period);
+
+                // Redis 中应有正确值
+                var f = (int)await db.StringGetAsync($"{testName}:frequency");
+                var p = (int)await db.StringGetAsync($"{testName}:period");
+                Assert.Equal(20, f);
+                Assert.Equal(2000 * 60, p); // 2 minutes in ms
+            }
+            finally
+            {
+                await db.KeyDeleteAsync($"{testName}:period");
+                await db.KeyDeleteAsync($"{testName}:frequency");
+            }
+        }
+
+        /// <summary>
+        /// 验证 DefaultCfgUpater.Update 仍正常工作（基类 InitializeAsync 为 no-op）
+        /// </summary>
+        [Fact]
+        public async Task DefaultCfgUpater_Update_StillWorksAfterBaseChange()
+        {
+            var throttle = new Throttle("test-base-update", TimeSpan.FromMinutes(1), 1);
+            var updater = throttle.Updater;
+
+            // Update 现在会调 InitializeAsync()，但 DefaultCfgUpater 是 no-op，不影响
+            await updater.Update(TimeSpan.FromMinutes(2), 2);
+
+            Assert.Equal(2, throttle.Blocker.Frequency);
+            Assert.Equal(2, throttle.Counter.Frequency);
+            Assert.Equal(TimeSpan.FromMinutes(2), throttle.Counter.Period);
         }
     }
 }
